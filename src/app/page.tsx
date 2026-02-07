@@ -1,65 +1,118 @@
-import Image from "next/image";
+'use client';
+
+import { motion } from 'framer-motion';
+import { Database, Image as ImageIcon, Rocket, Shield, Zap, ChevronRight } from 'lucide-react';
+import { FeatureCard } from '@/components/FeatureCard';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 export default function Home() {
+  const { data: session, status } = useSession();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen">
+      {/* Header/Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+            Shyama ERP
+          </div>
+          <div className="flex items-center gap-4">
+            {status === 'authenticated' ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted hidden sm:inline">
+                  Welcome, <span className="font-semibold text-foreground">{session.user?.name}</span>
+                </span>
+                <button
+                  onClick={() => signOut()}
+                  className="px-4 py-2 text-sm font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => signIn()}
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden pt-32 pb-32 lg:pt-40 lg:pb-48">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(45%_45%_at_50%_50%,rgba(99,102,241,0.1)_0%,rgba(2,6,23,0)_100%)]" />
+
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+                Next-Gen ERP Solution
+              </span>
+              <h1 className="text-5xl lg:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-r from-foreground to-muted bg-clip-text text-transparent">
+                Powering Business with Premium Tech
+              </h1>
+              <p className="text-xl text-muted mb-10 max-w-2xl mx-auto leading-relaxed">
+                A robust, scalable, and beautifully designed ERP built with Next.js, MongoDB, and Cloudinary. Ready for production and future-proof.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button className="px-8 py-4 bg-primary text-white rounded-xl font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform flex items-center gap-2 group">
+                  Get Started
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button className="px-8 py-4 bg-secondary text-foreground rounded-xl font-semibold hover:bg-secondary/80 transition-colors">
+                  View Demo
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-24 bg-secondary/30">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <FeatureCard
+              icon={<Database className="w-6 h-6" />}
+              title="MongoDB Ready"
+              description="Full Mongoose integration with cached connections for serverless environments."
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <FeatureCard
+              icon={<ImageIcon className="w-6 h-6" />}
+              title="Smart Image Upload"
+              description="Abstracted storage layer using Cloudinary, ready for Cloudflare R2 migration."
+            />
+            <FeatureCard
+              icon={<Shield className="w-6 h-6" />}
+              title="Type Safe"
+              description="End-to-end TypeScript support ensuring reliability and great developer experience."
+            />
+            <FeatureCard
+              icon={<Rocket className="w-6 h-6" />}
+              title="Production Ready"
+              description="Optimized for Render and Vercel with structured environment configurations."
+            />
+            <FeatureCard
+              icon={<Zap className="w-6 h-6" />}
+              title="Tailwind v4"
+              description="Built with the latest Tailwind CSS for rapid and modern UI development."
+            />
+            <FeatureCard
+              icon={<Rocket className="w-6 h-6" />}
+              title="ERP Core"
+              description="A solid foundation for building complex Enterprise Resource Planning systems."
+            />
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
