@@ -5,8 +5,19 @@ import { Database, Image as ImageIcon, Rocket, Shield, Zap, ChevronRight } from 
 import { FeatureCard } from '@/components/FeatureCard';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/dashboard');
+    }
+  }, [status, router]);
 
   return (
     <main className="min-h-screen">
@@ -17,21 +28,22 @@ export default function Home() {
             Shyama ERP
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             {status === 'authenticated' ? (
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted hidden sm:inline">
                   Welcome, <span className="font-semibold text-foreground">{session.user?.name}</span>
                 </span>
                 <button
-                  onClick={() => signOut()}
+                  onClick={() => router.push('/dashboard')}
                   className="px-4 py-2 text-sm font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
                 >
-                  Sign Out
+                  Go to Dashboard
                 </button>
               </div>
             ) : (
               <button
-                onClick={() => signIn()}
+                onClick={() => signIn(undefined, { callbackUrl: '/dashboard' })}
                 className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
               >
                 Sign In
@@ -63,11 +75,11 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button className="px-8 py-4 bg-primary text-white rounded-xl font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform flex items-center gap-2 group">
+                <button className="px-8 py-4 bg-primary text-white rounded-md font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform flex items-center gap-2 group">
                   Get Started
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
-                <button className="px-8 py-4 bg-secondary text-foreground rounded-xl font-semibold hover:bg-secondary/80 transition-colors">
+                <button className="px-8 py-4 bg-secondary text-foreground rounded-md font-semibold hover:bg-secondary/80 transition-colors">
                   View Demo
                 </button>
               </div>

@@ -49,3 +49,8 @@ A premium Enterprise Resource Planning system built with Next.js, MongoDB, and C
 
 ## Future-Proofing
 The storage logic is abstracted in `src/lib/storage.ts`. To switch to Cloudflare R2 or Images, simply update the implementation in that file to maintain compatibility across the app.
+
+
+
+admin@example.com
+password123

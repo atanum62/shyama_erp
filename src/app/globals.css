@@ -1,51 +1,83 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --primary: #6366f1;
+  --background: #f8fafc;
+  /* Light Whitish Blue */
+  --foreground: #334155;
+  /* Slate 700 */
+  --primary: #f97316;
+  /* Bright Orange */
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --secondary: #fff7ed;
+  /* Light Whitish Orange */
+  --accent: #e0f2fe;
+  /* Very Light Blue */
   --muted: #64748b;
-  --border: #e2e8f0;
+  /* Slate 500 */
+  --border: #cbd5e1;
+  /* Slate 300 */
+  --card: #ffffff;
+  --card-foreground: #334155;
 }
 
-@theme inline {
+.dark {
+  --background: #0f172a;
+  /* Dark Blue/Slate */
+  --foreground: #f1f5f9;
+  /* Near White */
+  --primary: #fb923c;
+  /* Slightly lighter Orange */
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  /* Darker Slate */
+  --accent: #1e40af;
+  /* Deep Blue */
+  --muted: #94a3b8;
+  /* Mid Slate */
+  --border: #334155;
+  /* Darker Border */
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+}
+
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #020617;
-    --foreground: #f8fafc;
-    --primary: #818cf8;
-    --secondary: #1e293b;
-    --muted: #94a3b8;
-    --border: #1e293b;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dark .glass {
+  background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .bg-gradient-premium {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: linear-gradient(135deg, #f97316 0%, #38bdf8 100%);
 }

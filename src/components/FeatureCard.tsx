@@ -12,9 +12,9 @@ export function FeatureCard({ icon, title, description }: FeatureCardProps) {
     return (
         <motion.div
             whileHover={{ y: -5 }}
-            className="p-8 rounded-2xl bg-background border border-border hover:border-primary/50 transition-colors group"
+            className="p-8 rounded-lg bg-background border border-border hover:border-primary/50 transition-colors group"
         >
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 {icon}
             </div>
             <h3 className="text-xl font-bold mb-3">{title}</h3>
