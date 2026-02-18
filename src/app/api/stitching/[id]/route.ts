@@ -4,14 +4,15 @@ import StitchingOrder from '@/backend/models/StitchingOrder';
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         await dbConnect();
+        const { id } = await params;
         const body = await request.json();
 
         // If we are recording a receipt, we might want to increment existing counts
-        const order = await StitchingOrder.findById(params.id);
+        const order = await StitchingOrder.findById(id);
         if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
         if (body.addReceived) {

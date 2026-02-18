@@ -4,18 +4,209 @@ import Inward from '@/backend/models/Inward';
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         await dbConnect();
+        const { id } = await params;
         const body = await request.json();
-        const inward = await Inward.findByIdAndUpdate(params.id, body, { new: true });
+
+        let inward;
+        if (body.itemId) {
+            // Update specific item status
+            const updateData: any = {};
+
+            if (body.status) {
+                updateData["items.$.status"] = body.status;
+
+                // Only store cause if status is Rejected
+                if (body.status === 'Rejected') {
+                    updateData["items.$.rejectionCause"] = body.rejectionCause;
+                    // Initialize returnStatus if rejected for color
+                    if (body.rejectionCause === 'Color') {
+                        updateData["items.$.returnStatus"] = 'Pending';
+                    }
+                } else {
+                    updateData["items.$.rejectionCause"] = "";
+                    updateData["items.$.returnStatus"] = ""; // Reset return status if not rejected
+                }
+
+                // Sync samplePassed with status
+                updateData["items.$.samplePassed"] = body.status === 'Approved';
+            }
+
+            // Support direct returnStatus updates (from the Return section)
+            if (body.returnStatus !== undefined) {
+                updateData["items.$.returnStatus"] = body.returnStatus;
+            }
+
+            // Support quantity update if provided
+            if (body.quantity !== undefined) {
+                updateData["items.$.quantity"] = Number(body.quantity);
+            }
+
+            // Support color update if provided (e.g. after redyeing)
+            if (body.color !== undefined) {
+                updateData["items.$.color"] = body.color;
+            }
+
+            // Support cuttingSize update if provided
+            if (body.cuttingSize !== undefined) {
+                updateData["items.$.cuttingSize"] = Number(body.cuttingSize);
+            }
+
+            inward = await Inward.findOneAndUpdate(
+                { _id: id, "items._id": body.itemId },
+                { $set: updateData },
+                { new: true }
+            );
+
+            // If cuttingSize, quantity, or color was updated, sync to CuttingSize collection if a record exists
+            if (inward && (body.cuttingSize !== undefined || body.quantity !== undefined || body.color !== undefined)) {
+                const item = inward.items.find((i: any) => i._id.toString() === body.itemId);
+                if (item) {
+                    const mongoose = (await import('mongoose')).default;
+                    const CuttingSize = mongoose.models.CuttingSize || (await import('@/backend/models/CuttingSize')).default;
+
+                    // Prepare sync data
+                    const syncData: any = {
+                        lotNo: item.lotNo || inward.lotNo,
+                        color: item.color,
+                        weight: item.quantity,
+                        inwardId: id,
+                        itemId: body.itemId,
+                        materialId: item.materialId,
+                        challanNo: inward.challanNo
+                    };
+
+                    // Only update size if provided, otherwise preserve existing or set default if creating
+                    if (body.cuttingSize !== undefined) {
+                        syncData.cuttingsize = Number(body.cuttingSize);
+
+                        // If providing size, we always want to upsert
+                        await CuttingSize.findOneAndUpdate(
+                            { inwardId: id, itemId: body.itemId },
+                            { $set: syncData },
+                            { upsert: true, new: true }
+                        );
+                    } else {
+                        // If updating other fields (like weight/color), only update IF the record already exists
+                        await CuttingSize.findOneAndUpdate(
+                            { inwardId: id, itemId: body.itemId },
+                            { $set: syncData },
+                            { new: false }
+                        );
+                    }
+                }
+            }
+
+            // If quantity was updated, recalculate totalQuantity for the whole document
+            if (inward && body.quantity !== undefined) {
+                const totalQuantity = inward.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+                inward = await Inward.findByIdAndUpdate(id, { totalQuantity }, { new: true });
+            }
+        } else {
+            // Document level update (generic)
+            inward = await Inward.findByIdAndUpdate(id, body, { new: true });
+        }
 
         if (!inward) {
             return NextResponse.json({ error: 'Inward not found' }, { status: 404 });
         }
 
         return NextResponse.json(inward);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function PUT(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        await dbConnect();
+        const { id } = await params;
+        const body = await request.json();
+
+        // Remove _id from body to avoid MongoError: After applying the update, the (immutable) field '_id' was found to have been altered
+        const { _id, ...updateData } = body;
+
+        // Calculate totalQuantity and propagate lotNo
+        if (updateData.items && Array.isArray(updateData.items)) {
+            updateData.totalQuantity = updateData.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+            updateData.items = updateData.items.map((item: any) => ({
+                ...item,
+                lotNo: item.lotNo || updateData.lotNo,
+                status: item.status || 'Pending',
+                rejectionCause: item.rejectionCause || ''
+            }));
+        }
+
+        const inward = await Inward.findByIdAndUpdate(id, updateData, { new: true })
+            .populate('partyId', 'name')
+            .populate('items.materialId', 'name');
+
+        if (!inward) {
+            return NextResponse.json({ error: 'Inward not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(inward);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        await dbConnect();
+        const { id } = await params;
+        const { searchParams } = new URL(request.url);
+        const itemId = searchParams.get('itemId');
+
+        if (itemId) {
+            // Delete specific item from inward
+            const inward = await Inward.findById(id);
+            if (!inward) {
+                return NextResponse.json({ error: 'Inward not found' }, { status: 404 });
+            }
+
+            // Filter out the item
+            inward.items = inward.items.filter((item: any) => item._id.toString() !== itemId);
+
+            // Recalculate total quantity
+            inward.totalQuantity = inward.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+
+            // If no items left, delete the whole inward document?
+            // The user said "just delete that specific item", but if it's the last one,
+            // it's cleaner to keep the header or delete the doc.
+            // Let's stick to deleting the item and let the user decide if they want the empty inward.
+            await inward.save();
+
+            // CASCADE DELETE: Remove from CuttingSize collection
+            const mongoose = (await import('mongoose')).default;
+            const CuttingSize = mongoose.models.CuttingSize || (await import('@/backend/models/CuttingSize')).default;
+            await CuttingSize.deleteOne({ inwardId: id, itemId: itemId });
+
+            return NextResponse.json({ message: 'Item deleted successfully', inward });
+        } else {
+            // Delete entire inward
+            const inward = await Inward.findByIdAndDelete(id);
+
+            if (!inward) {
+                return NextResponse.json({ error: 'Inward not found' }, { status: 404 });
+            }
+
+            // CASCADE DELETE: Remove all items of this lot from CuttingSize collection
+            const mongoose = (await import('mongoose')).default;
+            const CuttingSize = mongoose.models.CuttingSize || (await import('@/backend/models/CuttingSize')).default;
+            await CuttingSize.deleteMany({ inwardId: id });
+
+            return NextResponse.json({ message: 'Inward deleted successfully' });
+        }
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

@@ -33,12 +33,16 @@ export interface IInward extends Document {
         lotNo?: string;    // External Lot/Batch Number
         remarks?: string;
         status: 'Pending' | 'Approved' | 'Rejected'; // Line item status
+        rejectionCause?: 'Color' | 'Weight' | '';
+        returnStatus?: 'Pending' | 'Returned' | '';
         samplePassed?: boolean; // For Fabric QC
+        cuttingSize?: number; // In CM
     }>;
 
     totalQuantity: number; // Aggregate total
     status: InwardStatus;  // Overall status
     remarks?: string;
+    lotNo?: string;
 
     createdBy: Types.ObjectId;
     createdAt: Date;
@@ -72,7 +76,10 @@ const InwardSchema: Schema = new Schema(
                     enum: ['Pending', 'Approved', 'Rejected'],
                     default: 'Pending'
                 },
-                samplePassed: { type: Boolean, default: false }
+                rejectionCause: { type: String, enum: ['Color', 'Weight', ''], default: '' },
+                returnStatus: { type: String, enum: ['Pending', 'Returned', ''], default: '' },
+                samplePassed: { type: Boolean, default: false },
+                cuttingSize: { type: Number }
             }
         ],
 
@@ -83,17 +90,19 @@ const InwardSchema: Schema = new Schema(
             default: InwardStatus.RECEIVED
         },
         remarks: { type: String },
+        lotNo: { type: String },
         createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     },
     {
         timestamps: true,
+        minimize: false
     }
 );
 
 // Pre-save to calculate total
-InwardSchema.pre<IInward>('save', async function () {
+InwardSchema.pre<IInward>('save', async function (this: IInward) {
     if (this.items && this.items.length > 0) {
-        this.totalQuantity = this.items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+        this.totalQuantity = this.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
     }
 });
 

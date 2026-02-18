@@ -27,3 +27,47 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        await dbConnect();
+        const body = await request.json();
+        const { _id, ...updateData } = body;
+
+        if (!_id) {
+            return NextResponse.json({ error: 'ID is required for update' }, { status: 400 });
+        }
+
+        const material = await Material.findByIdAndUpdate(_id, updateData, { new: true });
+
+        if (!material) {
+            return NextResponse.json({ error: 'Material not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(material);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        await dbConnect();
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'ID is required for deletion' }, { status: 400 });
+        }
+
+        const material = await Material.findByIdAndDelete(id);
+
+        if (!material) {
+            return NextResponse.json({ error: 'Material not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'Material deleted successfully' });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}

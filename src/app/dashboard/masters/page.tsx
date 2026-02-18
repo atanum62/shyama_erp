@@ -24,6 +24,7 @@ export default function MastersPage() {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<any | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -85,12 +86,14 @@ export default function MastersPage() {
 
             const payload = activeTab === 'materials'
                 ? {
+                    _id: editingItem?._id,
                     name: formData.name,
                     code: generatedCode,
                     category: formData.category,
                     unit: formData.unit
                 }
                 : {
+                    _id: editingItem?._id,
                     name: formData.name,
                     code: generatedCode,
                     type: tabConfig[activeTab].apiType,
@@ -101,19 +104,69 @@ export default function MastersPage() {
                 };
 
             const res = await fetch(url, {
-                method: 'POST',
+                method: editingItem ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
             if (res.ok) {
-                setIsModalOpen(false);
-                setFormData({ name: '', code: '', phone: '', address: '', contactPerson: '', gstIn: '', category: 'Fabric', unit: 'KG' });
+                closeModal();
                 fetchData();
             }
         } catch (err) {
             console.error(err);
         }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this record?')) return;
+
+        try {
+            const url = activeTab === 'materials'
+                ? `/api/masters/materials?id=${id}`
+                : `/api/masters/parties?id=${id}`;
+
+            const res = await fetch(url, { method: 'DELETE' });
+            if (res.ok) {
+                fetchData();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleEdit = (item: any) => {
+        setEditingItem(item);
+        if (activeTab === 'materials') {
+            setFormData({
+                name: item.name,
+                code: item.code,
+                category: item.category,
+                unit: item.unit,
+                phone: '',
+                address: '',
+                contactPerson: '',
+                gstIn: '',
+            });
+        } else {
+            setFormData({
+                name: item.name,
+                code: item.code,
+                phone: item.contactNumber || '',
+                address: item.address || '',
+                contactPerson: item.contactPerson || '',
+                gstIn: item.gstin || '',
+                category: 'Fabric',
+                unit: 'KG',
+            });
+        }
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingItem(null);
+        setFormData({ name: '', code: '', phone: '', address: '', contactPerson: '', gstIn: '', category: 'Fabric', unit: 'KG' });
     };
 
     return (
@@ -238,10 +291,16 @@ export default function MastersPage() {
                                         )}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-primary transition-all border border-border/50">
+                                                <button
+                                                    onClick={() => handleEdit(item)}
+                                                    className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-primary transition-all border border-border/50"
+                                                >
                                                     <Edit className="w-4 h-4" />
                                                 </button>
-                                                <button className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-red-500 transition-all border border-border/50">
+                                                <button
+                                                    onClick={() => handleDelete(item._id)}
+                                                    className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-red-500 transition-all border border-border/50"
+                                                >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -257,11 +316,11 @@ export default function MastersPage() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={closeModal} />
                     <div className="relative bg-card w-full max-w-lg rounded-2xl shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/30">
-                            <h3 className="text-lg font-bold">Add New {tabConfig[activeTab].label.split(' ')[0]}</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-card rounded-md transition-colors">
+                            <h3 className="text-lg font-bold">{editingItem ? 'Edit' : 'Add New'} {tabConfig[activeTab].label.split(' ')[0]}</h3>
+                            <button onClick={closeModal} className="p-1 hover:bg-card rounded-md transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -347,7 +406,7 @@ export default function MastersPage() {
                             <div className="pt-4 flex gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => setIsModalOpen(false)}
+                                    onClick={closeModal}
                                     className="flex-1 px-4 py-3 border border-border rounded-xl font-bold text-muted hover:bg-secondary transition-colors"
                                 >
                                     Cancel
@@ -356,7 +415,7 @@ export default function MastersPage() {
                                     type="submit"
                                     className="flex-[2] px-4 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
                                 >
-                                    Save Entity
+                                    {editingItem ? 'Update Entity' : 'Save Entity'}
                                 </button>
                             </div>
                         </form>

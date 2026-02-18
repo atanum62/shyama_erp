@@ -39,7 +39,7 @@ export default function DashboardPage() {
     if (loading) return <div className="p-10 text-center animate-pulse">Loading Shyama ERP Dashboard...</div>;
 
     const cards = [
-        { title: 'Fabric Inward', value: stats?.counts?.inwards || 0, icon: Package, link: '/dashboard/inward', color: 'blue' },
+        { title: 'Fabric Inward', value: stats?.counts?.inwards || 0, icon: Package, link: '/dashboard/fabrics', color: 'blue' },
         { title: 'Cutting Orders', value: stats?.counts?.cutting || 0, icon: Scissors, link: '/dashboard/cutting', color: 'orange' },
         { title: 'Active Stitching', value: stats?.counts?.stitching || 0, icon: UserCircle, link: '/dashboard/stitching', color: 'purple' },
         { title: 'Daily Dispatches', value: stats?.counts?.delivery || 0, icon: Truck, link: '/dashboard/delivery', color: 'green' },
