@@ -39,6 +39,15 @@ export async function PATCH(
             if (body.returnStatus !== undefined) {
                 updateData["items.$.returnStatus"] = body.returnStatus;
             }
+            if (body.returnChallanNo !== undefined) {
+                updateData["items.$.returnChallanNo"] = body.returnChallanNo;
+            }
+            if (body.returnDate !== undefined) {
+                updateData["items.$.returnDate"] = body.returnDate;
+            }
+            if (body.returnImages !== undefined) {
+                updateData["items.$.returnImages"] = body.returnImages;
+            }
 
             // Support quantity update if provided
             if (body.quantity !== undefined) {
@@ -50,14 +59,78 @@ export async function PATCH(
                 updateData["items.$.color"] = body.color;
             }
 
+            // Handle Rereceive Logic (History Tracking)
+            if (body.rereceiveChallanNo !== undefined || body.rereceiveDate !== undefined) {
+                const currentInward = await Inward.findById(id);
+                const currentItem = currentInward.items.find((i: any) => i._id.toString() === body.itemId);
+
+                if (currentItem) {
+                    const historyEvents = [];
+
+                    // 1. Archive the 'Return' event if it exists
+                    if (currentItem.returnStatus === 'Returned') {
+                        historyEvents.push({
+                            action: 'Returned',
+                            date: currentItem.returnDate || new Date(),
+                            challanNo: currentItem.returnChallanNo,
+                            images: currentItem.returnImages,
+                            color: currentItem.color,
+                            quantity: currentItem.quantity
+                        });
+                    }
+
+                    // 2. Add the 'Rereceived' event
+                    historyEvents.push({
+                        action: 'Rereceived',
+                        date: body.rereceiveDate || new Date(),
+                        challanNo: body.rereceiveChallanNo,
+                        images: body.rereceiveImages || [],
+                        color: body.color || currentItem.color,
+                        quantity: Number(body.quantity) || currentItem.quantity
+                    });
+
+                    // We can't use $push with findOneAndUpdate for dynamic array updates easily in one go with other set fields 
+                    // on the same path depending on mongoose version, but let's try pushing to items.$.history
+                    // However, we effectively want to APPEND to the existing history.
+                    // The safest way is to read, modify, and save, OR use $push.
+                    // Let's use $push for history.
+
+                    updateData["$push"] = { "items.$.history": { $each: historyEvents } };
+
+                    // Clear return status fields
+                    updateData["items.$.returnStatus"] = '';
+                    updateData["items.$.returnChallanNo"] = '';
+                    updateData["items.$.returnDate"] = null;
+                    updateData["items.$.returnImages"] = [];
+                    updateData["items.$.rejectionCause"] = '';
+                    updateData["items.$.status"] = 'Pending';
+                }
+            }
+
             // Support cuttingSize update if provided
             if (body.cuttingSize !== undefined) {
                 updateData["items.$.cuttingSize"] = Number(body.cuttingSize);
             }
 
+            // Support pcs update if provided
+            if (body.pcs !== undefined) {
+                updateData["items.$.pcs"] = Number(body.pcs);
+            }
+
+            let pushData: any = {};
+            if (updateData["$push"]) {
+                pushData = updateData["$push"];
+                delete updateData["$push"];
+            }
+
+            const updateQuery: any = { $set: updateData };
+            if (Object.keys(pushData).length > 0) {
+                updateQuery.$push = pushData;
+            }
+
             inward = await Inward.findOneAndUpdate(
                 { _id: id, "items._id": body.itemId },
-                { $set: updateData },
+                updateQuery,
                 { new: true }
             );
 
@@ -128,6 +201,7 @@ export async function PUT(
         await dbConnect();
         const { id } = await params;
         const body = await request.json();
+        console.log(`Incoming Inward PUT [${id}] Body:`, JSON.stringify(body, null, 2));
 
         // Remove _id from body to avoid MongoError: After applying the update, the (immutable) field '_id' was found to have been altered
         const { _id, ...updateData } = body;
@@ -135,21 +209,41 @@ export async function PUT(
         // Calculate totalQuantity and propagate lotNo
         if (updateData.items && Array.isArray(updateData.items)) {
             updateData.totalQuantity = updateData.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
-            updateData.items = updateData.items.map((item: any) => ({
-                ...item,
-                lotNo: item.lotNo || updateData.lotNo,
-                status: item.status || 'Pending',
-                rejectionCause: item.rejectionCause || ''
-            }));
+            updateData.items = updateData.items.map((item: any) => {
+                const mappedItem = {
+                    ...item,
+                    pcs: item.pcs !== undefined ? Number(item.pcs) : Number(item.pieces || 0),
+                    lotNo: item.lotNo || updateData.lotNo,
+                    status: item.status || 'Pending',
+                    rejectionCause: item.rejectionCause || ''
+                };
+                return mappedItem;
+            });
+            console.log('Processed updateData.items:', JSON.stringify(updateData.items, null, 2));
         }
 
-        const inward = await Inward.findByIdAndUpdate(id, updateData, { new: true })
-            .populate('partyId', 'name')
-            .populate('items.materialId', 'name');
+        // Sanitize images to be clean strings
+        if (updateData.images && Array.isArray(updateData.images)) {
+            updateData.images = updateData.images.map((img: any) => typeof img === 'string' ? img : (img.secure_url || img.url)).filter(Boolean);
+        }
 
+        let inward = await Inward.findById(id);
         if (!inward) {
             return NextResponse.json({ error: 'Inward not found' }, { status: 404 });
         }
+
+        // Apply updates
+        Object.assign(inward, updateData);
+
+        // Save to trigger hooks and schema validation
+        await inward.save();
+
+        // Re-populate for response
+        inward = await Inward.findById(id)
+            .populate('partyId', 'name')
+            .populate('items.materialId', 'name');
+
+        console.log('Successfully Saved Inward (via save()):', JSON.stringify(inward, null, 2));
 
         return NextResponse.json(inward);
     } catch (error: any) {

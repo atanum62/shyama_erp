@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Filter, AlertCircle, Clock, Truck, CheckCircle2, XCircle, X, Palette } from 'lucide-react';
+import { RotateCcw, Search, Filter, AlertCircle, Clock, Truck, CheckCircle2, XCircle, X, Palette, Eye } from 'lucide-react';
 
 export default function FabricReturnPage() {
     const [inwards, setInwards] = useState<any[]>([]);
@@ -13,6 +13,28 @@ export default function FabricReturnPage() {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [newColor, setNewColor] = useState<string>('');
     const [isUpdating, setIsUpdating] = useState(false);
+
+    // Rereceive Modal State
+    const [rereceiveFormData, setRereceiveFormData] = useState({
+        challanNo: '',
+        date: new Date().toISOString().split('T')[0],
+        weight: '',
+        images: [] as string[],
+        pendingFiles: [] as File[]
+    });
+
+    // Return Modal State
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+    const [returnFormData, setReturnFormData] = useState({
+        challanNo: '',
+        date: new Date().toISOString().split('T')[0],
+        images: [] as string[],
+        pendingFiles: [] as File[]
+    });
+
+    // History Modal State
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -75,11 +97,115 @@ export default function FabricReturnPage() {
         setIsModalOpen(true);
     };
 
+    const openReturnModal = (item: any) => {
+        setSelectedItem(item);
+        setReturnFormData({
+            challanNo: item.returnChallanNo || '',
+            date: item.returnDate ? new Date(item.returnDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            images: item.returnImages || [],
+            pendingFiles: []
+        });
+        setIsReturnModalOpen(true);
+    };
+
+    const openHistoryModal = (item: any) => {
+        setSelectedItem(item);
+        setIsHistoryModalOpen(true);
+    };
+
+    const handleReturnFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        const files = Array.from(e.target.files);
+        setReturnFormData(prev => ({
+            ...prev,
+            pendingFiles: [...prev.pendingFiles, ...files]
+        }));
+    };
+
+    const handleConfirmReturn = async () => {
+        if (!selectedItem) return;
+        setIsUpdating(true);
+        setUploadingImage(true);
+
+        try {
+            // Upload images first
+            let uploadedUrls: string[] = [];
+            if (returnFormData.pendingFiles.length > 0) {
+                uploadedUrls = await Promise.all(
+                    returnFormData.pendingFiles.map(async (file) => {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const res = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        return data.url || data.secure_url;
+                    })
+                );
+            }
+
+            const allImages = [...returnFormData.images, ...uploadedUrls];
+
+            const res = await fetch(`/api/inward/${selectedItem.inwardId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    itemId: selectedItem._id,
+                    returnStatus: 'Returned',
+                    returnChallanNo: returnFormData.challanNo,
+                    returnDate: returnFormData.date,
+                    returnImages: allImages
+                })
+            });
+
+            if (res.ok) {
+                setIsReturnModalOpen(false);
+                await fetchData();
+            }
+        } catch (err) {
+            console.error('Return confirmation error:', err);
+            alert('Failed to process return. Check console.');
+        } finally {
+            setIsUpdating(false);
+            setUploadingImage(false);
+        }
+    };
+
+    const handleRereceiveFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        const files = Array.from(e.target.files);
+        setRereceiveFormData(prev => ({
+            ...prev,
+            pendingFiles: [...(prev.pendingFiles || []), ...files]
+        }));
+    };
+
     const handleRereceiveAndReset = async () => {
         if (!selectedItem || !newColor) return;
 
         setIsUpdating(true);
+        setUploadingImage(true);
         try {
+            // Upload images first
+            let uploadedUrls: string[] = [];
+            if (rereceiveFormData.pendingFiles.length > 0) {
+                uploadedUrls = await Promise.all(
+                    rereceiveFormData.pendingFiles.map(async (file) => {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const res = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        return data.url || data.secure_url;
+                    })
+                );
+            }
+
+            const allImages = [...rereceiveFormData.images, ...uploadedUrls];
+
             const res = await fetch(`/api/inward/${selectedItem.inwardId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -88,7 +214,12 @@ export default function FabricReturnPage() {
                     rejectionCause: '',
                     returnStatus: '',
                     color: newColor,
-                    itemId: selectedItem._id
+                    itemId: selectedItem._id,
+                    // New Rereceive Details
+                    quantity: rereceiveFormData.weight,
+                    rereceiveChallanNo: rereceiveFormData.challanNo,
+                    rereceiveDate: rereceiveFormData.date,
+                    rereceiveImages: allImages
                 })
             });
             if (res.ok) {
@@ -99,6 +230,7 @@ export default function FabricReturnPage() {
             console.error('Rereceive error:', err);
         } finally {
             setIsUpdating(false);
+            setUploadingImage(false);
         }
     };
 
@@ -197,6 +329,20 @@ export default function FabricReturnPage() {
                                             {(item.returnStatus === 'Returned') ? (
                                                 <>
                                                     <button
+                                                        onClick={() => openHistoryModal(item)}
+                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
+                                                        title="View History"
+                                                    >
+                                                        <Clock className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openReturnModal(item)}
+                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
+                                                        title="View Return Details"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleUpdateReturnStatus(item.inwardId, item._id, 'Pending')}
                                                         className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
                                                         title="Reset to Pending"
@@ -212,13 +358,22 @@ export default function FabricReturnPage() {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button
-                                                    onClick={() => handleUpdateReturnStatus(item.inwardId, item._id, 'Returned')}
-                                                    className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm flex items-center gap-1"
-                                                >
-                                                    <Truck className="w-3 h-3" />
-                                                    Return
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={() => openHistoryModal(item)}
+                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
+                                                        title="View History"
+                                                    >
+                                                        <Clock className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openReturnModal(item)}
+                                                        className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <Truck className="w-3 h-3" />
+                                                        Return
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </td>
@@ -232,13 +387,16 @@ export default function FabricReturnPage() {
             {/* Rereceive Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="bg-card w-full max-w-lg rounded-2xl border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/20">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Palette className="w-5 h-5 text-primary" />
+                                <div className="p-2 bg-green-500/10 rounded-lg">
+                                    <CheckCircle2 className="w-5 h-5 text-green-600" />
                                 </div>
-                                <h2 className="text-xl font-bold">Rereceived Redyed Fabric</h2>
+                                <div>
+                                    <h2 className="text-xl font-bold">Receive Redyed Fabric</h2>
+                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">Back from {selectedItem?.partyName}</p>
+                                </div>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -248,11 +406,11 @@ export default function FabricReturnPage() {
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 overflow-y-auto">
                             <div className="bg-secondary/30 p-4 rounded-xl space-y-2">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-muted">Challan No:</span>
-                                    <span className="font-bold">{selectedItem?.challanNo}</span>
+                                    <span className="text-muted">Original Return:</span>
+                                    <span className="font-bold">{selectedItem?.returnDate ? new Date(selectedItem.returnDate).toLocaleDateString() : '-'} (Challan: {selectedItem?.returnChallanNo || '-'})</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted">Fabric Type:</span>
@@ -264,36 +422,331 @@ export default function FabricReturnPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-foreground ml-1">New Redyed Color</label>
-                                <div className="relative">
-                                    <Palette className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">New Redyed Color</label>
+                                    <div className="relative">
+                                        <Palette className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                                        <input
+                                            type="text"
+                                            value={newColor}
+                                            onChange={(e) => setNewColor(e.target.value)}
+                                            placeholder="Enter new color name..."
+                                            className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg font-bold"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Final Weight (KG)</label>
+                                        <input
+                                            type="number"
+                                            value={rereceiveFormData.weight}
+                                            onChange={(e) => setRereceiveFormData({ ...rereceiveFormData, weight: e.target.value })}
+                                            placeholder="0.00"
+                                            className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Receive Date</label>
+                                        <input
+                                            type="date"
+                                            value={rereceiveFormData.date}
+                                            onChange={(e) => setRereceiveFormData({ ...rereceiveFormData, date: e.target.value })}
+                                            className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">New Challan No</label>
                                     <input
                                         type="text"
-                                        autoFocus
-                                        value={newColor}
-                                        onChange={(e) => setNewColor(e.target.value)}
-                                        placeholder="Enter new color name..."
-                                        className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg font-bold"
+                                        value={rereceiveFormData.challanNo}
+                                        onChange={(e) => setRereceiveFormData({ ...rereceiveFormData, challanNo: e.target.value })}
+                                        placeholder="e.g. DY-NEW-9922"
+                                        className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
                                     />
                                 </div>
-                                <p className="text-[10px] text-muted ml-1 italic">* This will update the fabric color and reset inspection status to Pending.</p>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase text-muted ml-1">Challan / Receive Proof</label>
+                                    <div className="flex flex-wrap gap-3">
+                                        <label className={`w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/30 transition-all text-muted ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <div className="p-1 bg-secondary rounded-full"><div className="w-4 h-4 border-2 border-muted/50 rotate-90" /></div>
+                                            <span className="text-[9px] font-bold">Add Photo</span>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                multiple
+                                                accept="image/*"
+                                                onChange={handleRereceiveFileUpload}
+                                                disabled={uploadingImage}
+                                            />
+                                        </label>
+
+                                        {/* Previews */}
+                                        {rereceiveFormData.pendingFiles.map((file, i) => (
+                                            <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border group">
+                                                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="preview" />
+                                                <button
+                                                    onClick={() => setRereceiveFormData(prev => ({ ...prev, pendingFiles: prev.pendingFiles.filter((_, idx) => idx !== i) }))}
+                                                    className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-secondary/10 flex gap-3">
+                        <div className="p-6 border-t border-border bg-secondary/10 flex gap-3 mt-auto">
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="flex-1 px-4 py-2.5 border border-border bg-card hover:bg-secondary text-foreground font-bold rounded-xl transition-all"
+                                className="flex-1 px-4 py-3 border border-border bg-card hover:bg-secondary text-foreground font-bold rounded-xl transition-all"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleRereceiveAndReset}
-                                disabled={isUpdating || !newColor}
-                                className="flex-1 px-4 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                disabled={isUpdating || !newColor || !rereceiveFormData.weight}
+                                className="flex-[2] px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                {isUpdating ? 'Updating...' : 'Confirm Rereceive'}
+                                {isUpdating ? 'Updating...' : 'Confirm Receipt'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* NEW: Return Details Modal */}
+            {isReturnModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-card w-full max-w-lg rounded-2xl border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Truck className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Process Return</h2>
+                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">Returning to {selectedItem?.partyName}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsReturnModalOpen(false)}
+                                className="p-2 hover:bg-secondary rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6 overflow-y-auto">
+                            {/* Item Summary */}
+                            <div className="bg-secondary/30 p-4 rounded-xl flex gap-4 items-center">
+                                <div className="w-10 h-10 rounded-full border border-border flex-shrink-0" style={{ backgroundColor: selectedItem?.color.toLowerCase() }}></div>
+                                <div>
+                                    <div className="font-bold">{selectedItem?.color} - {selectedItem?.materialId?.name}</div>
+                                    <div className="text-sm text-muted">Quantity: {selectedItem?.quantity} {selectedItem?.unit} (Dia: {selectedItem?.diameter})</div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Return Challan No</label>
+                                    <input
+                                        type="text"
+                                        value={returnFormData.challanNo}
+                                        onChange={(e) => setReturnFormData({ ...returnFormData, challanNo: e.target.value })}
+                                        placeholder="e.g. RET-001"
+                                        className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                                        disabled={selectedItem?.returnStatus === 'Returned'}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Return Date</label>
+                                    <input
+                                        type="date"
+                                        value={returnFormData.date}
+                                        onChange={(e) => setReturnFormData({ ...returnFormData, date: e.target.value })}
+                                        className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        disabled={selectedItem?.returnStatus === 'Returned'}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase text-muted ml-1">Challan / Return Proof Images</label>
+                                <div className="flex flex-wrap gap-3">
+                                    <label className={`w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/30 transition-all text-muted ${uploadingImage || selectedItem?.returnStatus === 'Returned' ? 'opacity-50 pointer-events-none' : ''}`}>
+                                        <div className="p-1 bg-secondary rounded-full"><div className="w-4 h-4 border-2 border-muted/50 rotate-90" /></div>
+                                        <span className="text-[9px] font-bold">Add Photo</span>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={handleReturnFileUpload}
+                                            disabled={uploadingImage || selectedItem?.returnStatus === 'Returned'}
+                                        />
+                                    </label>
+
+                                    {/* Existing Return Images (Read Only) */}
+                                    {returnFormData.images.map((img, i) => (
+                                        <div key={`saved-${i}`} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border group">
+                                            <img src={img} className="w-full h-full object-cover" alt="saved" />
+                                        </div>
+                                    ))}
+
+                                    {/* Previews */}
+                                    {returnFormData.pendingFiles.map((file, i) => (
+                                        <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border group">
+                                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="preview" />
+                                            <button
+                                                onClick={() => setReturnFormData(prev => ({ ...prev, pendingFiles: prev.pendingFiles.filter((_, idx) => idx !== i) }))}
+                                                className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-border bg-secondary/10 flex gap-3 mt-auto">
+                            <button
+                                onClick={() => setIsReturnModalOpen(false)}
+                                className="flex-1 px-4 py-3 border border-border bg-card hover:bg-secondary text-foreground font-bold rounded-xl transition-all"
+                            >
+                                {selectedItem?.returnStatus === 'Returned' ? 'Close' : 'Cancel'}
+                            </button>
+                            {selectedItem?.returnStatus !== 'Returned' && (
+                                <button
+                                    onClick={handleConfirmReturn}
+                                    disabled={isUpdating || !returnFormData.challanNo}
+                                    className="flex-[2] px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isUpdating ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Confirm Return
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* NEW: History Modal */}
+            {isHistoryModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-card w-full max-w-2xl rounded-2xl border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Clock className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Item History</h2>
+                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">{selectedItem?.color} - {selectedItem?.materialId?.name}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsHistoryModalOpen(false)}
+                                className="p-2 hover:bg-secondary rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            {!selectedItem?.history || selectedItem.history.length === 0 ? (
+                                <div className="text-center p-10 text-muted">
+                                    <Clock className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                    No history records found for this item.
+                                </div>
+                            ) : (
+                                <div className="relative border-l-2 border-border/50 ml-4 space-y-8 pl-8 py-2">
+                                    {selectedItem.history.map((event: any, idx: number) => (
+                                        <div key={idx} className="relative group">
+                                            {/* Timeline Dot */}
+                                            <div className={`absolute -left-[39px] top-0 w-5 h-5 rounded-full border-4 border-card ${event.action === 'Returned' ? 'bg-orange-500' :
+                                                event.action === 'Rereceived' ? 'bg-green-500' : 'bg-red-500'
+                                                }`}></div>
+
+                                            <div className="bg-secondary/20 p-4 rounded-xl border border-border/50 hover:border-border transition-colors">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <span className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded ${event.action === 'Returned' ? 'bg-orange-500/10 text-orange-600' :
+                                                            event.action === 'Rereceived' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+                                                            }`}>
+                                                            {event.action}
+                                                        </span>
+                                                        <div className="text-[10px] text-muted font-bold mt-1">
+                                                            {new Date(event.date).toLocaleDateString()} at {new Date(event.date).toLocaleTimeString()}
+                                                        </div>
+                                                    </div>
+                                                    {event.challanNo && (
+                                                        <div className="text-right">
+                                                            <div className="text-[10px] text-muted font-bold uppercase">Challan No</div>
+                                                            <div className="font-bold text-sm">{event.challanNo}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4 text-sm mt-3">
+                                                    {event.quantity && (
+                                                        <div>
+                                                            <span className="text-muted text-xs">Quantity:</span>
+                                                            <span className="font-bold ml-1">{event.quantity} KG</span>
+                                                        </div>
+                                                    )}
+                                                    {event.color && (
+                                                        <div>
+                                                            <span className="text-muted text-xs">Color:</span>
+                                                            <span className="font-bold ml-1">{event.color}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {event.images && event.images.length > 0 && (
+                                                    <div className="mt-4 pt-3 border-t border-border/50">
+                                                        <div className="text-[10px] font-bold text-muted uppercase mb-2">Attached Documents</div>
+                                                        <div className="flex gap-2 flex-wrap">
+                                                            {event.images.map((img: string, i: number) => (
+                                                                <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="block w-16 h-16 rounded-lg overflow-hidden border border-border hover:opacity-80 transition-opacity">
+                                                                    <img src={img} className="w-full h-full object-cover" alt="History doc" />
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-border bg-secondary/10">
+                            <button
+                                onClick={() => setIsHistoryModalOpen(false)}
+                                className="w-full px-4 py-3 border border-border bg-card hover:bg-secondary text-foreground font-bold rounded-xl transition-all"
+                            >
+                                Close History
                             </button>
                         </div>
                     </div>

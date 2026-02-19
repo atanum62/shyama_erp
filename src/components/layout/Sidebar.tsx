@@ -17,13 +17,17 @@ import {
     Ruler,
     Scale,
     RotateCcw,
-    ListChecks
+    ListChecks,
+    Settings,
+    FileText
 } from 'lucide-react';
 
 export function Sidebar() {
     const pathname = usePathname();
     const [isFabricsOpen, setIsFabricsOpen] = useState(false);
     const [isInspectionOpen, setIsInspectionOpen] = useState(false);
+
+    const [displayName, setDisplayName] = useState('SHYAMA ERP');
 
     // Auto-expand based on current route
     useEffect(() => {
@@ -33,6 +37,20 @@ export function Sidebar() {
                 setIsInspectionOpen(true);
             }
         }
+
+        const fetchBranding = () => {
+            fetch('/api/system/settings')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.erpName) setDisplayName(data.erpName);
+                })
+                .catch(err => console.error('Failed to load branding:', err));
+        };
+
+        fetchBranding();
+        // Poll every 5 seconds to keep branding updated
+        const interval = setInterval(fetchBranding, 5000);
+        return () => clearInterval(interval);
     }, [pathname]);
 
     const menuItems = [
@@ -43,11 +61,11 @@ export function Sidebar() {
         { name: 'Delivery', href: '/dashboard/delivery', icon: Truck },
         { name: 'Accounting', href: '/dashboard/accounting', icon: IndianRupee },
         { name: 'Reports', href: '/dashboard/reports', icon: FilePieChart },
+        { name: 'System', href: '/dashboard/system', icon: Settings },
     ];
 
     const fabricsSubMenu = [
         { name: 'Inward', href: '/dashboard/fabrics', icon: ListChecks },
-        { name: 'Cutting Size', href: '/dashboard/fabrics/cuttingsize', icon: Ruler },
     ];
 
     const inspectionSubMenu = [
@@ -62,10 +80,12 @@ export function Sidebar() {
         <aside className="w-64 bg-card border-r border-border hidden md:flex flex-col h-screen sticky top-0 pt-4">
             <div className="h-16 flex items-center px-6">
                 <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-primary/30">S</div>
+                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-primary/30">
+                        {displayName.charAt(0)}
+                    </div>
                     <div>
-                        <h2 className="text-xl font-black tracking-tighter text-foreground leading-none">SHYAMA ERP</h2>
-                        <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Manufacturing</span>
+                        <h2 className="text-xl font-black tracking-tighter text-foreground leading-none uppercase">{displayName}</h2>
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Management System</span>
                     </div>
                 </div>
             </div>
@@ -163,6 +183,18 @@ export function Sidebar() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Cutting Size - Moved here after Inspection */}
+                            <Link
+                                href="/dashboard/fabrics/cuttingsize"
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-all ${pathname === '/dashboard/fabrics/cuttingsize'
+                                    ? 'text-primary bg-primary/5'
+                                    : 'text-muted hover:text-foreground hover:bg-secondary/50'
+                                    }`}
+                            >
+                                <Ruler className="w-3.5 h-3.5" />
+                                Cutting Size
+                            </Link>
                         </div>
                     )}
                 </div>

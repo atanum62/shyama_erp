@@ -76,22 +76,18 @@ export default function FabricInspectionPage() {
         setIsRejectionModalOpen(true);
     };
 
-    const flattenedItems = inwards.flatMap(inward =>
-        inward.items.map((item: any) => ({
-            ...item,
-            inwardId: inward._id,
-            challanNo: inward.challanNo,
-            partyName: inward.partyId?.name,
-            inwardDate: inward.inwardDate,
-            globalLotNo: inward.lotNo
-        }))
-    );
-
-    const filteredItems = flattenedItems.filter(item =>
-        item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.lotNo?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredInwards = inwards.filter(inward => {
+        const query = searchTerm.toLowerCase();
+        return (
+            inward.lotNo?.toLowerCase().includes(query) ||
+            inward.challanNo?.toLowerCase().includes(query) ||
+            inward.partyId?.name?.toLowerCase().includes(query) ||
+            inward.items.some((item: any) =>
+                item.color?.toLowerCase().includes(query) ||
+                item.materialId?.name?.toLowerCase().includes(query)
+            )
+        );
+    });
 
     return (
         <div className="space-y-6">
@@ -119,93 +115,99 @@ export default function FabricInspectionPage() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-secondary/30 text-xs font-bold text-muted uppercase tracking-wider border-b border-border">
-                                <th className="px-6 py-4">Inward Details</th>
+                                <th className="px-6 py-4">Lot & Inward</th>
                                 <th className="px-6 py-4">Dyeing House</th>
-                                <th className="px-6 py-4">Fabric Color</th>
-                                <th className="px-6 py-4">Fabric Item</th>
-                                <th className="px-6 py-4">Status & Cause</th>
-                                <th className="px-6 py-4 text-right">Inspection Actions</th>
+                                <th className="px-6 py-4">Consignment</th>
+                                <th className="px-6 py-4">Items Inspection</th>
+                                <th className="px-6 py-4 text-right">Batch Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                             {loading ? (
                                 <tr><td colSpan={6} className="p-10 text-center text-muted">Loading transactions...</td></tr>
-                            ) : filteredItems.length === 0 ? (
+                            ) : filteredInwards.length === 0 ? (
                                 <tr><td colSpan={6} className="p-20 text-center">
                                     <AlertCircle className="w-12 h-12 text-muted mx-auto mb-4" />
-                                    <p className="text-muted">No pending inspections found.</p>
+                                    <p className="text-muted">No entries found matching your search.</p>
                                 </td></tr>
-                            ) : filteredItems.map((item, idx) => (
-                                <tr key={item._id || `${item.inwardId}-${idx}`} className="hover:bg-secondary/5 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-foreground">{item.challanNo}</div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <div className="text-[10px] text-muted font-medium bg-secondary/50 px-1.5 py-0.5 rounded w-fit">{new Date(item.inwardDate).toLocaleDateString()}</div>
-                                            <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight">Lot: {item.lotNo || item.globalLotNo || '-'}</div>
+                            ) : filteredInwards.map((inward, idx) => (
+                                <tr key={inward._id} className="hover:bg-secondary/5 transition-colors group align-top">
+                                    <td className="px-6 py-6 max-w-[200px]">
+                                        <div className="font-bold text-foreground text-sm">Lot: {inward.lotNo || '-'}</div>
+                                        <div className="text-[10px] text-muted font-medium bg-secondary/50 px-1.5 py-0.5 rounded w-fit mt-1">{new Date(inward.inwardDate).toLocaleDateString()}</div>
+                                        <div className="text-[10px] text-muted font-bold mt-2 uppercase tracking-tighter">Challan: {inward.challanNo}</div>
+                                    </td>
+                                    <td className="px-6 py-6">
+                                        <div className="text-sm font-bold text-foreground">{inward.partyId?.name || 'Unknown'}</div>
+                                        <div className="text-[10px] text-muted font-medium mt-1 uppercase">Supplier Receipt</div>
+                                    </td>
+                                    <td className="px-6 py-6">
+                                        <div className="text-sm font-black text-primary">
+                                            {inward.items.reduce((acc: number, item: any) => acc + item.quantity, 0)} KG
+                                        </div>
+                                        <div className="text-[10px] text-muted font-bold mt-0.5">{inward.items.length} Varieties</div>
+                                    </td>
+                                    <td className="px-6 py-6">
+                                        <div className="space-y-3">
+                                            {inward.items.map((item: any, i: number) => (
+                                                <div key={i} className="flex items-center justify-between gap-4 group/item pb-2 border-b border-border/40 last:border-0 last:pb-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-2.5 h-2.5 rounded-full border border-black/10 flex-shrink-0"
+                                                            style={{ backgroundColor: item.color.toLowerCase() }}
+                                                        />
+                                                        <div>
+                                                            <div className="text-[11px] font-bold text-foreground leading-none">{item.color}</div>
+                                                            <div className="text-[9px] text-muted font-medium mt-0.5">{item.materialId?.name || 'Fabric'} • {item.quantity}KG</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${item.status === 'Approved' ? 'bg-green-500/10 text-green-600' :
+                                                                item.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
+                                                                    'bg-orange-500/10 text-orange-600'
+                                                            }`}>
+                                                            {item.status}
+                                                        </div>
+                                                        {item.status === 'Pending' && (
+                                                            <div className="flex gap-1">
+                                                                <button
+                                                                    onClick={() => handleUpdateStatus(inward._id, item._id, 'Approved')}
+                                                                    className="p-1 hover:bg-green-500/20 text-green-600 rounded"
+                                                                >
+                                                                    <CheckCircle className="w-3 h-3" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openRejectionModal(inward._id, item._id)}
+                                                                    className="p-1 hover:bg-red-500/20 text-red-600 rounded"
+                                                                >
+                                                                    <XCircle className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-3 h-3 rounded-full border border-border shadow-sm"
-                                                style={{ backgroundColor: item.color.toLowerCase() }}
-                                            ></div>
-                                            <span className="text-sm font-semibold text-foreground uppercase tracking-tight">{item.color}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-bold text-primary">{item.quantity} KG</div>
-                                        <div className="text-[10px] text-muted">
-                                            {item.materialId?.name || 'Fabric'} • Dia {item.diameter}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold w-fit ${item.status === 'Approved' ? 'bg-green-500/10 text-green-600' :
-                                                item.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
-                                                    'bg-orange-500/10 text-orange-600'
-                                                }`}>
-                                                {getStatusIcon(item.status)}
-                                                {item.status}
+                                    <td className="px-6 py-6 text-right">
+                                        <div className="flex flex-col items-end gap-2">
+                                            {inward.items.some((i: any) => i.status === 'Pending') && (
+                                                <button
+                                                    onClick={async () => {
+                                                        // Approve all pending items in this lot
+                                                        const pending = inward.items.filter((i: any) => i.status === 'Pending');
+                                                        for (const item of pending) {
+                                                            await handleUpdateStatus(inward._id, item._id, 'Approved');
+                                                        }
+                                                    }}
+                                                    className="px-3 py-1.5 bg-primary text-white hover:opacity-90 rounded-lg text-xs font-bold shadow-sm"
+                                                >
+                                                    Approve Entire Lot
+                                                </button>
+                                            )}
+                                            <div className="text-[9px] text-muted font-medium italic">
+                                                Last Updated: {new Date(inward.updatedAt).toLocaleTimeString()}
                                             </div>
-                                            {item.status === 'Rejected' && item.rejectionCause && (
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-2 py-1 rounded-md border border-red-100">
-                                                    {item.rejectionCause}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            {item.status !== 'Approved' && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(item.inwardId, item._id, 'Approved')}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-600 hover:bg-green-500/20 rounded-lg transition-all text-xs font-bold"
-                                                >
-                                                    <CheckCircle className="w-4 h-4" />
-                                                    Approve
-                                                </button>
-                                            )}
-                                            {item.status !== 'Rejected' && (
-                                                <button
-                                                    onClick={() => openRejectionModal(item.inwardId, item._id)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-600 hover:bg-red-500/20 rounded-lg transition-all text-xs font-bold"
-                                                >
-                                                    <XCircle className="w-4 h-4" />
-                                                    Reject
-                                                </button>
-                                            )}
-                                            {item.status === 'Approved' || item.status === 'Rejected' ? (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(item.inwardId, item._id, 'Received', undefined)}
-                                                    className="text-[10px] text-muted hover:text-foreground underline decoration-dotted"
-                                                >
-                                                    Reset
-                                                </button>
-                                            ) : null}
                                         </div>
                                     </td>
                                 </tr>

@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     try {
         await dbConnect();
         const body = await request.json();
+        console.log('Incoming Inward POST Body:', JSON.stringify(body, null, 2));
 
         // 1. Handle referenceNo (Required & Unique)
         if (!body.referenceNo) {
@@ -84,18 +85,28 @@ export async function POST(request: Request) {
             }
         }
 
-        // 3.1 Calculate totalQuantity
+        // 3.1 Calculate totalQuantity and sanitize pcs
         if (body.items && body.items.length > 0) {
             body.totalQuantity = body.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+            body.items = body.items.map((item: any) => ({
+                ...item,
+                pcs: item.pcs !== undefined ? Number(item.pcs) : Number(item.pieces || 0)
+            }));
+            console.log('Processed POST items:', JSON.stringify(body.items, null, 2));
         }
 
-        // 4. Handle Challan Number
-        if (!body.challanNo) {
-            body.challanNo = `CH-${Date.now().toString().slice(-6)}`;
+        // 5. Ensure Images are clean strings
+        if (body.images && Array.isArray(body.images)) {
+            body.images = body.images.map((img: any) => typeof img === 'string' ? img : (img.secure_url || img.url)).filter(Boolean);
         }
 
         const inward = await Inward.create(body);
-        return NextResponse.json(inward, { status: 201 });
+        const populatedInward = await Inward.findById(inward._id)
+            .populate('partyId', 'name')
+            .populate('items.materialId', 'name');
+
+        console.log('Successfully Created Inward:', JSON.stringify(populatedInward, null, 2));
+        return NextResponse.json(populatedInward, { status: 201 });
     } catch (error: any) {
         console.error('Inward POST Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

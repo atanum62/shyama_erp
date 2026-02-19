@@ -26,6 +26,7 @@ export interface IInward extends Document {
         materialId: Types.ObjectId; // Ref: Material (Fabric: Interlock/Rib)
         color: string;
         diameter?: string; // e.g., '32', '34' (Fabric specific)
+        pcs?: number;      // Pieces field after diameter
         gsm?: number;      // Fabric specific
         quantity: number;  // Received quantity
         unit: string;      // KG or PCS
@@ -43,6 +44,7 @@ export interface IInward extends Document {
     status: InwardStatus;  // Overall status
     remarks?: string;
     lotNo?: string;
+    images?: string[]; // Array of image URLs/paths
 
     createdBy: Types.ObjectId;
     createdAt: Date;
@@ -65,7 +67,8 @@ const InwardSchema: Schema = new Schema(
                 materialId: { type: Schema.Types.ObjectId, ref: 'Material', required: true },
                 color: { type: String, required: true },
                 diameter: { type: String },
-                gsm: { type: Number },
+                pcs: { type: Number, default: 0 },
+                gsm: { type: Number, default: 0 },
                 quantity: { type: Number, required: true },
                 unit: { type: String, required: true },
                 rolls: { type: Number },
@@ -78,8 +81,20 @@ const InwardSchema: Schema = new Schema(
                 },
                 rejectionCause: { type: String, enum: ['Color', 'Weight', ''], default: '' },
                 returnStatus: { type: String, enum: ['Pending', 'Returned', ''], default: '' },
+                returnChallanNo: { type: String },
+                returnDate: { type: Date },
+                returnImages: { type: [String], default: [] },
                 samplePassed: { type: Boolean, default: false },
-                cuttingSize: { type: Number }
+                cuttingSize: { type: Number },
+                history: [{
+                    action: { type: String, enum: ['Rejected', 'Returned', 'Rereceived'] },
+                    date: { type: Date, default: Date.now },
+                    challanNo: String,
+                    images: [String],
+                    remarks: String,
+                    quantity: Number,
+                    color: String
+                }]
             }
         ],
 
@@ -91,6 +106,7 @@ const InwardSchema: Schema = new Schema(
         },
         remarks: { type: String },
         lotNo: { type: String },
+        images: { type: [String], default: [] },
         createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     },
     {
@@ -105,6 +121,11 @@ InwardSchema.pre<IInward>('save', async function (this: IInward) {
         this.totalQuantity = this.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
     }
 });
+
+// Forcing model refresh in development to avoid schema caching issues
+if (process.env.NODE_ENV === 'development') {
+    delete mongoose.models.Inward;
+}
 
 const Inward = mongoose.models.Inward || mongoose.model<IInward>('Inward', InwardSchema);
 export default Inward;

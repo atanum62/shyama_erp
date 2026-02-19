@@ -23,13 +23,15 @@ async function dbConnect() {
   }
 
   if (!cached.promise) {
+    const dbName = process.env.MONGODB_NAME || 'shyamaerp_db';
+    console.log(`📡 Connecting to MongoDB: ${MONGODB_URI!.split('@')[1]} [DB: ${dbName}]`);
     const opts = {
       bufferCommands: false,
-      dbName: process.env.MONGODB_NAME || 'shyamaerp_db',
+      dbName: dbName,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-      console.log('✅ MongoDB Connected Successfully');
+      console.log('✅ MongoDB Connected Successfully to', dbName);
       return mongoose;
     });
   }
