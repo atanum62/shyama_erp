@@ -398,133 +398,135 @@ export default function MastersPage() {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase text-muted tracking-wider">
-                                    {activeTab === 'colors' ? 'Color Name' : activeTab === 'materials' ? 'Material Name' : 'Business Name / Name'}
-                                </label>
-                                <input
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                    placeholder={activeTab === 'colors' ? 'e.g. Royal Blue' : activeTab === 'materials' ? 'e.g. Cotton 30s' : 'e.g. LUX Industries Ltd.'}
-                                />
-                            </div>
+                        <div className="max-h-[min(600px,80vh)] overflow-y-auto custom-scrollbar">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase text-muted tracking-wider">
+                                        {activeTab === 'colors' ? 'Color Name' : activeTab === 'materials' ? 'Material Name' : 'Business Name / Name'}
+                                    </label>
+                                    <input
+                                        required
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                        placeholder={activeTab === 'colors' ? 'e.g. Royal Blue' : activeTab === 'materials' ? 'e.g. Cotton 30s' : 'e.g. LUX Industries Ltd.'}
+                                    />
+                                </div>
 
-                            {activeTab === 'materials' ? (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase text-muted tracking-wider">Category</label>
-                                        <select
-                                            value={formData.category}
-                                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
-                                        >
-                                            <option>Fabric</option>
-                                            <option>Accessory</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase text-muted tracking-wider">Base Unit</label>
-                                        <input
-                                            value={formData.unit}
-                                            onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
-                                            placeholder="e.g. KG, PCS, DOZ"
-                                        />
-                                    </div>
-                                </div>
-                            ) : activeTab === 'colors' ? (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase text-muted tracking-wider">Hex Code / Color Picker</label>
-                                        <div className="flex gap-4 items-center bg-background p-2 rounded-xl border border-border">
-                                            <input
-                                                type="color"
-                                                value={formData.hexCode || '#000000'}
-                                                onChange={(e) => setFormData({ ...formData, hexCode: e.target.value })}
-                                                className="w-14 h-11 p-1 bg-background border-0 rounded-lg outline-none cursor-pointer"
-                                            />
-                                            <div className="h-8 w-[1px] bg-border" />
-                                            <input
-                                                value={formData.hexCode}
-                                                onChange={(e) => setFormData({ ...formData, hexCode: e.target.value })}
-                                                className="flex-1 bg-transparent border-0 outline-none font-mono text-sm"
-                                                placeholder="#FFFFFF"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase text-muted tracking-wider">Manual Code (Optional)</label>
-                                        <input
-                                            value={formData.code}
-                                            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none uppercase font-mono text-sm focus:ring-2 focus:ring-primary/20"
-                                            placeholder="e.g. WH-01 (Leave blank to auto-generate)"
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
+                                {activeTab === 'materials' ? (
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Contact Person</label>
-                                            <input
-                                                value={formData.contactPerson}
-                                                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Category</label>
+                                            <select
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                                 className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
-                                                placeholder="John Doe"
+                                            >
+                                                <option>Fabric</option>
+                                                <option>Accessory</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Base Unit</label>
+                                            <input
+                                                value={formData.unit}
+                                                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
+                                                placeholder="e.g. KG, PCS, DOZ"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : activeTab === 'colors' ? (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Hex Code / Color Picker</label>
+                                            <div className="flex gap-4 items-center bg-background p-2 rounded-xl border border-border">
+                                                <input
+                                                    type="color"
+                                                    value={formData.hexCode || '#000000'}
+                                                    onChange={(e) => setFormData({ ...formData, hexCode: e.target.value })}
+                                                    className="w-14 h-11 p-1 bg-background border-0 rounded-lg outline-none cursor-pointer"
+                                                />
+                                                <div className="h-8 w-[1px] bg-border" />
+                                                <input
+                                                    value={formData.hexCode}
+                                                    onChange={(e) => setFormData({ ...formData, hexCode: e.target.value })}
+                                                    className="flex-1 bg-transparent border-0 outline-none font-mono text-sm"
+                                                    placeholder="#FFFFFF"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Manual Code (Optional)</label>
+                                            <input
+                                                value={formData.code}
+                                                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none uppercase font-mono text-sm focus:ring-2 focus:ring-primary/20"
+                                                placeholder="e.g. WH-01 (Leave blank to auto-generate)"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold uppercase text-muted tracking-wider">Contact Person</label>
+                                                <input
+                                                    value={formData.contactPerson}
+                                                    onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
+                                                    placeholder="John Doe"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold uppercase text-muted tracking-wider">Phone Number</label>
+                                                <input
+                                                    value={formData.phone}
+                                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
+                                                    placeholder="+91..."
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Office Address</label>
+                                            <textarea
+                                                value={formData.address}
+                                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                                rows={2}
+                                                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
+                                                placeholder="Building, Street, Area..."
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Phone Number</label>
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">GSTIN / Identity</label>
                                             <input
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
-                                                placeholder="+91..."
+                                                value={formData.gstIn}
+                                                onChange={(e) => setFormData({ ...formData, gstIn: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none font-mono"
+                                                placeholder="19XXXXX..."
                                             />
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase text-muted tracking-wider">Office Address</label>
-                                        <textarea
-                                            value={formData.address}
-                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                            rows={2}
-                                            className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
-                                            placeholder="Building, Street, Area..."
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase text-muted tracking-wider">GSTIN / Identity</label>
-                                        <input
-                                            value={formData.gstIn}
-                                            onChange={(e) => setFormData({ ...formData, gstIn: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none font-mono"
-                                            placeholder="19XXXXX..."
-                                        />
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                )}
 
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="flex-1 px-4 py-3 border border-border rounded-xl font-bold text-muted hover:bg-secondary transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-[2] px-4 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
-                                >
-                                    {editingItem ? 'Update Entity' : 'Save Entity'}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="pt-4 flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={closeModal}
+                                        className="flex-1 px-4 py-3 border border-border rounded-xl font-bold text-muted hover:bg-secondary transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-[2] px-4 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+                                    >
+                                        {editingItem ? 'Update Entity' : 'Save Entity'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}

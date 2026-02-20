@@ -205,15 +205,15 @@ export default function ConsumptionPage() {
                     </div>
 
                     {/* The Spreadsheet Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
+                    <div className="overflow-auto max-h-[60vh] border-t border-border">
+                        <table className="w-full border-collapse table-fixed">
                             <thead>
-                                <tr className="bg-secondary/30">
-                                    <th className="sticky left-0 z-10 bg-secondary/30 px-5 py-3 text-left text-[11px] font-black uppercase tracking-wider text-muted border-b border-r border-border min-w-[90px]">
+                                <tr className="bg-secondary/30 sticky top-0 z-30">
+                                    <th className="sticky left-0 top-0 z-40 bg-secondary px-5 py-3 text-left text-[11px] font-black uppercase tracking-wider text-muted border-b border-r border-border min-w-[100px] w-[100px]">
                                         Size
                                     </th>
                                     {components.map((comp, cIdx) => (
-                                        <th key={cIdx} className="px-4 py-3 text-center text-[11px] font-black uppercase tracking-wider text-muted border-b border-r border-border min-w-[130px] group relative">
+                                        <th key={cIdx} className="bg-secondary/30 px-4 py-3 text-center text-[11px] font-black uppercase tracking-wider text-muted border-b border-r border-border min-w-[140px] group relative">
                                             <span>{comp}</span>
                                             <div className="text-[9px] text-muted/50 font-bold normal-case tracking-normal">kg/{unit === 'Dozen' ? 'doz' : 'pc'}</div>
                                             <button
@@ -227,11 +227,11 @@ export default function ConsumptionPage() {
                                     <th className="px-4 py-3 border-b border-border w-12"></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-border/50">
                                 {variations.map((v, vIdx) => (
-                                    <tr key={vIdx} className="group hover:bg-primary/5 transition-colors border-b border-border/60 last:border-0">
+                                    <tr key={vIdx} className="group hover:bg-primary/5 transition-colors">
                                         {/* Size label */}
-                                        <td className="sticky left-0 z-10 bg-card group-hover:bg-primary/5 transition-colors px-5 py-2 border-r border-border font-black text-foreground">
+                                        <td className="sticky left-0 z-20 bg-card group-hover:bg-primary/10 transition-colors px-5 py-3 border-r border-border font-black text-foreground shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                             {v.size}<span className="text-muted font-medium text-xs ml-0.5">cm</span>
                                         </td>
                                         {/* Values */}
