@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Filter, AlertCircle, Clock, Truck, CheckCircle2, XCircle, X, Palette, Eye } from 'lucide-react';
+import { RotateCcw, Search, Filter, AlertCircle, Clock, Truck, CheckCircle2, XCircle, X, Palette, Eye, ArrowRight, Trash2 } from 'lucide-react';
 
 export default function FabricReturnPage() {
     const [inwards, setInwards] = useState<any[]>([]);
+    const [returnHistory, setReturnHistory] = useState<any[]>([]);
+    const [colors, setColors] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
     // Rereceive Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,8 +39,7 @@ export default function FabricReturnPage() {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchInwards = async () => {
         try {
             const res = await fetch('/api/inward');
             if (res.ok) {
@@ -45,10 +47,38 @@ export default function FabricReturnPage() {
                 setInwards(Array.isArray(data) ? data : []);
             }
         } catch (err) {
-            console.error('Fetch error:', err);
-        } finally {
-            setLoading(false);
+            console.error('Fetch inward error:', err);
         }
+    };
+
+    const fetchHistory = async () => {
+        try {
+            const res = await fetch('/api/fabrics/return-history');
+            if (res.ok) {
+                const data = await res.json();
+                setReturnHistory(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error('Fetch history error:', err);
+        }
+    };
+
+    const fetchColors = async () => {
+        try {
+            const res = await fetch('/api/masters/colors');
+            if (res.ok) {
+                const data = await res.json();
+                setColors(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error('Fetch colors error:', err);
+        }
+    };
+
+    const fetchData = async () => {
+        setLoading(true);
+        await Promise.all([fetchInwards(), fetchHistory(), fetchColors()]);
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -67,10 +97,18 @@ export default function FabricReturnPage() {
             }))
     );
 
-    const filteredItems = flattenedItems.filter(item =>
+    const filteredPending = flattenedItems.filter(item =>
         item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredHistory = returnHistory.filter(item =>
+        item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.partyId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.lotNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.returnChallanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.rereceiveChallanNo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleUpdateReturnStatus = async (inwardId: string, itemId: string, returnStatus: string) => {
@@ -234,6 +272,25 @@ export default function FabricReturnPage() {
         }
     };
 
+    const handleDeleteHistory = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this history record? This action cannot be undone.')) return;
+
+        try {
+            const res = await fetch(`/api/fabrics/return-history?id=${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                await fetchHistory();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to delete history record');
+            }
+        } catch (err) {
+            console.error('Delete history error:', err);
+            alert('An error occurred while deleting the record');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -255,132 +312,237 @@ export default function FabricReturnPage() {
                 </div>
             </div>
 
+            {/* Tabs */}
+            <div className="flex border-b border-border">
+                <button
+                    onClick={() => setActiveTab('pending')}
+                    className={`px-6 py-3 text-sm font-bold transition-all relative ${activeTab === 'pending' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+                >
+                    Pending Returns ({filteredPending.length})
+                    {activeTab === 'pending' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.5)]"></div>}
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`px-6 py-3 text-sm font-bold transition-all relative ${activeTab === 'history' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+                >
+                    Processed History ({filteredHistory.length})
+                    {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.5)]"></div>}
+                </button>
+            </div>
+
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden min-h-[400px]">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-secondary/30 text-xs font-bold text-muted uppercase tracking-wider border-b border-border">
-                                <th className="px-6 py-4">Inward Details</th>
-                                <th className="px-6 py-4">Dyeing House</th>
-                                <th className="px-6 py-4">Fabric Color</th>
-                                <th className="px-6 py-4">Fabric Item</th>
-                                <th className="px-6 py-4 text-center">Reason</th>
-                                <th className="px-6 py-4 text-center">Return Status</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {loading ? (
-                                <tr><td colSpan={7} className="p-10 text-center text-muted">Loading return items...</td></tr>
-                            ) : filteredItems.length === 0 ? (
-                                <tr><td colSpan={7} className="p-20 text-center">
-                                    <RotateCcw className="w-12 h-12 text-muted mx-auto mb-4" />
-                                    <p className="text-muted">No pending color returns found.</p>
-                                </td></tr>
-                            ) : filteredItems.map((item, idx) => (
-                                <tr key={item._id || `${item.inwardId}-${idx}`} className="hover:bg-secondary/5 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-foreground">{item.challanNo}</div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <div className="text-[10px] text-muted font-medium bg-secondary/50 px-1.5 py-0.5 rounded w-fit">{new Date(item.inwardDate).toLocaleDateString()}</div>
-                                            <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight">Lot: {item.lotNo || item.globalLotNo || '-'}</div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-3 h-3 rounded-full border border-border shadow-sm"
-                                                style={{ backgroundColor: item.color.toLowerCase() }}
-                                            ></div>
-                                            <span className="text-sm font-semibold text-foreground uppercase tracking-tight">{item.color}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-bold text-primary">{item.quantity} KG</div>
-                                        <div className="text-[11px] text-muted">
-                                            {item.materialId?.name || 'Fabric'} • Dia {item.diameter}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col gap-1 items-center">
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold w-fit bg-red-500/10 text-red-600">
-                                                <XCircle className="w-3 h-3" />
-                                                REJECTED
-                                            </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-red-500/70 ml-1">
-                                                CAUSE: {item.rejectionCause}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${(item.returnStatus === 'Returned')
-                                            ? 'bg-blue-500/10 text-blue-600'
-                                            : 'bg-orange-500/10 text-orange-600'
-                                            }`}>
-                                            {item.returnStatus === 'Returned' ? <Truck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                                            {item.returnStatus || 'Pending'}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center gap-2 justify-end">
-                                            {(item.returnStatus === 'Returned') ? (
-                                                <>
-                                                    <button
-                                                        onClick={() => openHistoryModal(item)}
-                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
-                                                        title="View History"
-                                                    >
-                                                        <Clock className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openReturnModal(item)}
-                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
-                                                        title="View Return Details"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleUpdateReturnStatus(item.inwardId, item._id, 'Pending')}
-                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
-                                                        title="Reset to Pending"
-                                                    >
-                                                        <RotateCcw className="w-4 h-4 group-hover/reset:rotate-[-45deg] transition-transform" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openRereceiveModal(item)}
-                                                        className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-1"
-                                                    >
-                                                        <CheckCircle2 className="w-3 h-3" />
-                                                        Rereceived
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        onClick={() => openHistoryModal(item)}
-                                                        className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
-                                                        title="View History"
-                                                    >
-                                                        <Clock className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openReturnModal(item)}
-                                                        className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm flex items-center gap-1"
-                                                    >
-                                                        <Truck className="w-3 h-3" />
-                                                        Return
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
+                    {activeTab === 'pending' ? (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-secondary/30 text-xs font-bold text-muted uppercase tracking-wider border-b border-border">
+                                    <th className="px-6 py-4">Inward Details</th>
+                                    <th className="px-6 py-4">Dyeing House</th>
+                                    <th className="px-6 py-4">Fabric Color</th>
+                                    <th className="px-6 py-4">Fabric Item</th>
+                                    <th className="px-6 py-4 text-center">Reason</th>
+                                    <th className="px-6 py-4 text-center">Return Status</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {loading ? (
+                                    <tr><td colSpan={7} className="p-10 text-center text-muted">Loading return items...</td></tr>
+                                ) : filteredPending.length === 0 ? (
+                                    <tr><td colSpan={7} className="p-20 text-center">
+                                        <RotateCcw className="w-12 h-12 text-muted mx-auto mb-4" />
+                                        <p className="text-muted">No pending color returns found.</p>
+                                    </td></tr>
+                                ) : filteredPending.map((item, idx) => (
+                                    <tr key={item._id || `${item.inwardId}-${idx}`} className="hover:bg-secondary/5 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-foreground">{item.challanNo}</div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className="text-[10px] text-muted font-medium bg-secondary/50 px-1.5 py-0.5 rounded w-fit">{new Date(item.inwardDate).toLocaleDateString()}</div>
+                                                <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight">Lot: {item.lotNo || item.globalLotNo || '-'}</div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="w-3 h-3 rounded-full border border-border shadow-sm"
+                                                    style={{ backgroundColor: item.color.toLowerCase() }}
+                                                ></div>
+                                                <span className="text-sm font-semibold text-foreground uppercase tracking-tight">{item.color}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-bold text-primary">{item.quantity} KG</div>
+                                            <div className="text-[11px] text-muted">
+                                                {item.materialId?.name || 'Fabric'} • Dia {item.diameter}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1 items-center">
+                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold w-fit bg-red-500/10 text-red-600">
+                                                    <XCircle className="w-3 h-3" />
+                                                    REJECTED
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-500/70 ml-1">
+                                                    CAUSE: {item.rejectionCause}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${(item.returnStatus === 'Returned')
+                                                ? 'bg-blue-500/10 text-blue-600'
+                                                : 'bg-orange-500/10 text-orange-600'
+                                                }`}>
+                                                {item.returnStatus === 'Returned' ? <Truck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                                                {item.returnStatus || 'Pending'}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center gap-2 justify-end">
+                                                {(item.returnStatus === 'Returned') ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => openHistoryModal(item)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
+                                                            title="View History"
+                                                        >
+                                                            <Clock className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openReturnModal(item)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
+                                                            title="View Return Details"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleUpdateReturnStatus(item.inwardId, item._id, 'Pending')}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
+                                                            title="Reset to Pending"
+                                                        >
+                                                            <RotateCcw className="w-4 h-4 group-hover/reset:rotate-[-45deg] transition-transform" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openRereceiveModal(item)}
+                                                            className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-1"
+                                                        >
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                            Rereceived
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => openHistoryModal(item)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
+                                                            title="View History"
+                                                        >
+                                                            <Clock className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openReturnModal(item)}
+                                                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm flex items-center gap-1"
+                                                        >
+                                                            <Truck className="w-3 h-3" />
+                                                            Return
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-secondary/30 text-xs font-bold text-muted uppercase tracking-wider border-b border-border">
+                                    <th className="px-6 py-4">Inward Details</th>
+                                    <th className="px-6 py-4">Dyeing House</th>
+                                    <th className="px-6 py-4">History Timeline</th>
+                                    <th className="px-6 py-4">Color Change</th>
+                                    <th className="px-6 py-4">Final Weight</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {loading ? (
+                                    <tr><td colSpan={6} className="p-10 text-center text-muted">Loading history...</td></tr>
+                                ) : filteredHistory.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-20 text-center">
+                                        <Clock className="w-12 h-12 text-muted mx-auto mb-4" />
+                                        <p className="text-muted">No processed return history found.</p>
+                                    </td></tr>
+                                ) : filteredHistory.map((hist, idx) => (
+                                    <tr key={hist._id || idx} className="hover:bg-secondary/5 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-foreground">{hist.challanNo}</div>
+                                            <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight w-fit mt-1">Lot: {hist.lotNo || '-'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold">{hist.partyId?.name || 'Unknown'}</div>
+                                            <div className="text-[10px] text-muted">{hist.materialId?.name}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-2 text-[10px]">
+                                                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                                    <span className="font-bold text-muted uppercase">Returned:</span>
+                                                    <span className="font-medium">{new Date(hist.returnDate).toLocaleDateString()}</span>
+                                                    <span className="text-primary-foreground/50 bg-secondary px-1 rounded">#{hist.returnChallanNo}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[10px]">
+                                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                    <span className="font-bold text-muted uppercase">Received:</span>
+                                                    <span className="font-medium">{new Date(hist.rereceiveDate).toLocaleDateString()}</span>
+                                                    <span className="text-primary-foreground/50 bg-secondary px-1 rounded">#{hist.rereceiveChallanNo}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: (hist.previousColor || hist.originalColor)?.toLowerCase() }}></div>
+                                                    <span className="text-[9px] font-bold text-muted uppercase mt-0.5">{hist.previousColor || hist.originalColor}</span>
+                                                </div>
+                                                <ArrowRight className="w-3 h-3 text-muted" />
+                                                <div className="flex flex-col items-center">
+                                                    <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: hist.newColor?.toLowerCase() }}></div>
+                                                    <span className="text-[9px] font-bold text-primary uppercase mt-0.5">{hist.newColor}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-bold text-foreground">{hist.receivedQuantity} KG</div>
+                                            <div className="text-[10px] text-muted">Was: {hist.originalQuantity} KG</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <button
+                                                    onClick={() => openHistoryModal(hist)}
+                                                    className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border"
+                                                    title="View Detailed History"
+                                                >
+                                                    <Clock className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteHistory(hist._id)}
+                                                    className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 rounded-lg transition-all border border-red-500/20"
+                                                    title="Delete History Record"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
 
@@ -426,14 +588,25 @@ export default function FabricReturnPage() {
                                 <div className="space-y-2">
                                     <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">New Redyed Color</label>
                                     <div className="relative">
-                                        <Palette className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                                        <input
-                                            type="text"
+                                        <Palette className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted z-10" />
+                                        <select
                                             value={newColor}
                                             onChange={(e) => setNewColor(e.target.value)}
-                                            placeholder="Enter new color name..."
-                                            className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg font-bold"
-                                        />
+                                            className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg font-bold appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Select a color</option>
+                                            {colors.map((color) => (
+                                                <option key={color._id} value={color.name}>
+                                                    {color.name}
+                                                </option>
+                                            ))}
+                                            {!colors.some(c => c.name === selectedItem?.color) && (
+                                                <option value={selectedItem?.color}>{selectedItem?.color} (Current)</option>
+                                            )}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            <RotateCcw className="w-4 h-4 text-muted rotate-90" />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -661,7 +834,10 @@ export default function FabricReturnPage() {
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold">Item History</h2>
-                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">{selectedItem?.color} - {selectedItem?.materialId?.name}</p>
+                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">
+                                        {selectedItem?.color} - {selectedItem?.materialId?.name}
+                                        {selectedItem && ` • Back from ${selectedItem.partyName || selectedItem.partyId?.name || 'Unknown'}`}
+                                    </p>
                                 </div>
                             </div>
                             <button

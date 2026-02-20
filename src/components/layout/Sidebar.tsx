@@ -37,7 +37,10 @@ export function Sidebar() {
                 setIsInspectionOpen(true);
             }
         }
+    }, [pathname]);
 
+    // Fetch branding only once on mount
+    useEffect(() => {
         const fetchBranding = () => {
             fetch('/api/system/settings')
                 .then(res => res.json())
@@ -48,10 +51,7 @@ export function Sidebar() {
         };
 
         fetchBranding();
-        // Poll every 5 seconds to keep branding updated
-        const interval = setInterval(fetchBranding, 5000);
-        return () => clearInterval(interval);
-    }, [pathname]);
+    }, []);
 
     const menuItems = [
         { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },

@@ -163,27 +163,32 @@ export default function FabricInspectionPage() {
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${item.status === 'Approved' ? 'bg-green-500/10 text-green-600' :
-                                                                item.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
-                                                                    'bg-orange-500/10 text-orange-600'
+                                                            item.status === 'Rejected' ? 'bg-red-500/10 text-red-600' :
+                                                                'bg-orange-500/10 text-orange-600'
                                                             }`}>
                                                             {item.status}
+                                                            {item.status === 'Rejected' && item.rejectionCause && ` - ${item.rejectionCause}`}
                                                         </div>
-                                                        {item.status === 'Pending' && (
-                                                            <div className="flex gap-1">
+                                                        <div className="flex gap-1">
+                                                            {item.status !== 'Approved' && (
                                                                 <button
                                                                     onClick={() => handleUpdateStatus(inward._id, item._id, 'Approved')}
                                                                     className="p-1 hover:bg-green-500/20 text-green-600 rounded"
+                                                                    title="Approve"
                                                                 >
                                                                     <CheckCircle className="w-3 h-3" />
                                                                 </button>
+                                                            )}
+                                                            {item.status !== 'Rejected' && (
                                                                 <button
                                                                     onClick={() => openRejectionModal(inward._id, item._id)}
                                                                     className="p-1 hover:bg-red-500/20 text-red-600 rounded"
+                                                                    title="Reject"
                                                                 >
                                                                     <XCircle className="w-3 h-3" />
                                                                 </button>
-                                                            </div>
-                                                        )}
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}

@@ -82,6 +82,7 @@ const InwardSchema: Schema = new Schema(
                 rejectionCause: { type: String, enum: ['Color', 'Weight', ''], default: '' },
                 returnStatus: { type: String, enum: ['Pending', 'Returned', ''], default: '' },
                 returnChallanNo: { type: String },
+                rereceiveChallanNo: { type: String },
                 returnDate: { type: Date },
                 returnImages: { type: [String], default: [] },
                 samplePassed: { type: Boolean, default: false },

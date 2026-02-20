@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/db';
 import Inward from '@/backend/models/Inward';
+import ReturnHistory from '@/backend/models/ReturnHistory';
 
 export async function PATCH(
     request: Request,
@@ -67,6 +68,9 @@ export async function PATCH(
                 if (currentItem) {
                     const historyEvents = [];
 
+                    // 0. Include the original 'Rejected' event if we want a full timeline
+                    // For now let's just trace from Return onwards as per current logic
+
                     // 1. Archive the 'Return' event if it exists
                     if (currentItem.returnStatus === 'Returned') {
                         historyEvents.push({
@@ -80,26 +84,72 @@ export async function PATCH(
                     }
 
                     // 2. Add the 'Rereceived' event
-                    historyEvents.push({
+                    const rereceiveEvent = {
                         action: 'Rereceived',
                         date: body.rereceiveDate || new Date(),
                         challanNo: body.rereceiveChallanNo,
                         images: body.rereceiveImages || [],
                         color: body.color || currentItem.color,
                         quantity: Number(body.quantity) || currentItem.quantity
-                    });
-
-                    // We can't use $push with findOneAndUpdate for dynamic array updates easily in one go with other set fields 
-                    // on the same path depending on mongoose version, but let's try pushing to items.$.history
-                    // However, we effectively want to APPEND to the existing history.
-                    // The safest way is to read, modify, and save, OR use $push.
-                    // Let's use $push for history.
+                    };
+                    historyEvents.push(rereceiveEvent);
 
                     updateData["$push"] = { "items.$.history": { $each: historyEvents } };
 
-                    // Clear return status fields
+                    // Save to SEPARATE ReturnHistory collection - UPSERT logic
+                    try {
+                        const historyUpdate = {
+                            $set: {
+                                partyId: currentInward.partyId,
+                                materialId: currentItem.materialId,
+                                lotNo: currentItem.lotNo || currentInward.lotNo,
+                                challanNo: currentInward.challanNo,
+                                previousColor: currentItem.color,
+                                newColor: body.color || currentItem.color,
+                                receivedQuantity: Number(body.quantity) || currentItem.quantity,
+                                returnDate: currentItem.returnDate,
+                                returnChallanNo: currentItem.returnChallanNo,
+                                returnImages: currentItem.returnImages || [],
+                                rereceiveDate: body.rereceiveDate || new Date(),
+                                rereceiveChallanNo: body.rereceiveChallanNo,
+                                rereceiveImages: body.rereceiveImages || [],
+                            },
+                            $setOnInsert: {
+                                inwardId: id,
+                                itemId: body.itemId,
+                                originalColor: currentItem.color,
+                                originalQuantity: currentItem.quantity,
+                            },
+                        };
+
+                        // We can't use $push and $set on the same field "history" in a simple way if we want to preserve old ones
+                        // But here we are passing the full history from the currentItem which already has previous events
+                        // PLUS the new events we just generated
+                        const fullHistory = [
+                            ...(currentItem.history || []),
+                            ...historyEvents
+                        ];
+                        (historyUpdate.$set as any).history = fullHistory;
+
+                        await ReturnHistory.findOneAndUpdate(
+                            { inwardId: id, itemId: body.itemId },
+                            historyUpdate,
+                            { upsert: true, new: true }
+                        );
+                    } catch (historyErr) {
+                        console.error('Failed to upsert ReturnHistory:', historyErr);
+                    }
+
+                    // Update last known challans
+                    if (body.rereceiveChallanNo) {
+                        updateData["items.$.rereceiveChallanNo"] = body.rereceiveChallanNo;
+                    }
+                    if (currentItem.returnChallanNo) {
+                        updateData["items.$.returnChallanNo"] = currentItem.returnChallanNo;
+                    }
+
+                    // Clear operational status fields but KEEP the challan history
                     updateData["items.$.returnStatus"] = '';
-                    updateData["items.$.returnChallanNo"] = '';
                     updateData["items.$.returnDate"] = null;
                     updateData["items.$.returnImages"] = [];
                     updateData["items.$.rejectionCause"] = '';
