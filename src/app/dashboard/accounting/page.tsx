@@ -94,7 +94,7 @@ export default function AccountingPage() {
                     <h3 className="text-2xl font-bold mt-2 text-foreground">
                         ₹ {payments.reduce((acc, p) => acc + (p.type === 'Receivable' ? p.balanceAmount : 0), 0).toLocaleString()}
                     </h3>
-                    <p className="text-xs text-muted mt-1">Pending from clients (LUX/Rupa)</p>
+                    <p className="text-xs text-muted mt-1">Pending from clients </p>
                 </div>
                 <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
                     <div className="flex items-center justify-between">
@@ -197,8 +197,8 @@ export default function AccountingPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${p.status === 'Completed' ? 'bg-green-500/10 text-green-600' :
-                                                p.status === 'Partial' ? 'bg-orange-500/10 text-orange-600' :
-                                                    'bg-red-500/10 text-red-600'
+                                            p.status === 'Partial' ? 'bg-orange-500/10 text-orange-600' :
+                                                'bg-red-500/10 text-red-600'
                                             }`}>
                                             {p.status}
                                         </div>

@@ -54,3 +54,7 @@ The storage logic is abstracted in `src/lib/storage.ts`. To switch to Cloudflare
 
 admin@example.com
 password123
+
+
+Email: sumanta@shyama.com
+Password: password@2026

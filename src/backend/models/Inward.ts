@@ -88,12 +88,14 @@ const InwardSchema: Schema = new Schema(
                 samplePassed: { type: Boolean, default: false },
                 cuttingSize: { type: Number },
                 history: [{
-                    action: { type: String, enum: ['Rejected', 'Returned', 'Rereceived'] },
-                    date: { type: Date, default: Date.now },
+                    action: { type: String, enum: ['Rejected', 'Returned', 'Rereceived', 'Reweighted'] },
+                    timestamp: { type: Date, default: Date.now },
                     challanNo: String,
                     images: [String],
                     remarks: String,
                     quantity: Number,
+                    newWeight: Number,
+                    oldWeight: Number,
                     color: String
                 }]
             }

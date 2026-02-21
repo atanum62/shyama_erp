@@ -45,7 +45,7 @@ export default function MastersPage() {
     });
 
     const tabConfig: Record<Tab, { label: string; icon: any; apiType?: string; category?: string }> = {
-        'clients': { label: 'Clients (LUX/Rupa)', icon: Building2, apiType: 'Client' },
+        'clients': { label: 'Clients ', icon: Building2, apiType: 'Client' },
         'stitchers': { label: 'Stitchers', icon: UserCircle, apiType: 'Stitcher' },
         'dyeing-houses': { label: 'Dyeing Houses', icon: MapPin, apiType: 'DyeingHouse' },
         'suppliers': { label: 'Suppliers', icon: Users, apiType: 'Supplier' },

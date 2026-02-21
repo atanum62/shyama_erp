@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Filter, AlertCircle, Clock, Truck, CheckCircle2, XCircle, X, Palette, Eye, ArrowRight, Trash2 } from 'lucide-react';
+import { RotateCcw, Search, Filter, AlertCircle, Truck, CheckCircle2, XCircle, X, Palette, Eye, ArrowRight, Trash2, FileText, Printer, CheckCircle, Pencil } from 'lucide-react';
 
 export default function FabricReturnPage() {
     const [inwards, setInwards] = useState<any[]>([]);
     const [returnHistory, setReturnHistory] = useState<any[]>([]);
     const [colors, setColors] = useState<any[]>([]);
+    const [systemSettings, setSystemSettings] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
@@ -22,6 +23,7 @@ export default function FabricReturnPage() {
         challanNo: '',
         date: new Date().toISOString().split('T')[0],
         weight: '',
+        itemWeights: {} as Record<string, string>,
         images: [] as string[],
         pendingFiles: [] as File[]
     });
@@ -36,7 +38,7 @@ export default function FabricReturnPage() {
     });
 
     // History Modal State
-    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
 
     const fetchInwards = async () => {
@@ -75,9 +77,21 @@ export default function FabricReturnPage() {
         }
     };
 
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/system/settings');
+            if (res.ok) {
+                const data = await res.json();
+                setSystemSettings(data);
+            }
+        } catch (err) {
+            console.error('Fetch settings error:', err);
+        }
+    };
+
     const fetchData = async () => {
         setLoading(true);
-        await Promise.all([fetchInwards(), fetchHistory(), fetchColors()]);
+        await Promise.all([fetchInwards(), fetchHistory(), fetchColors(), fetchSettings()]);
         setLoading(false);
     };
 
@@ -85,22 +99,61 @@ export default function FabricReturnPage() {
         fetchData();
     }, []);
 
-    const flattenedItems = inwards.flatMap(inward =>
-        inward.items.filter((item: any) => item.status === 'Rejected' && item.rejectionCause === 'Color')
-            .map((item: any) => ({
+    const flattenedItems = inwards.reduce((acc: any[], inward: any) => {
+        const rejectedItems = inward.items.filter((item: any) => item.status === 'Rejected' && item.rejectionCause === 'Color');
+        if (rejectedItems.length === 0) return acc;
+
+        const subgroups: Record<string, any[]> = {};
+        rejectedItems.forEach((item: any) => {
+            const status = (item.returnStatus as string) || 'Pending';
+            if (!subgroups[status]) subgroups[status] = [];
+            subgroups[status].push({
                 ...item,
                 inwardId: inward._id,
+                partyName: inward.partyId?.name,
+                inwardDate: inward.inwardDate,
+                globalLotNo: inward.lotNo,
+                challanNo: inward.challanNo,
+                returnStatus: status
+            });
+        });
+
+        Object.entries(subgroups).forEach(([status, items]) => {
+            acc.push({
+                _id: `${inward._id}-${status}`,
+                inwardId: inward._id,
+                lotNo: items[0].lotNo || items[0].globalLotNo || inward.lotNo,
                 challanNo: inward.challanNo,
                 partyName: inward.partyId?.name,
                 inwardDate: inward.inwardDate,
-                globalLotNo: inward.lotNo
-            }))
-    );
+                returnStatus: status,
+                items: items,
+                quantity: items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0),
+                totalPcs: items.reduce((sum, it) => sum + (Number(it.pcs) || 0), 0),
+                color: Array.from(new Set(items.map(it => it.color))).join(', '),
+                materialName: Array.from(new Set(items.map(it => it.materialId?.name || 'Fabric'))).join(', '),
+                diaList: Array.from(new Set(items.map(it => it.diameter))).join(', '),
+                rejectionCause: items[0].rejectionCause,
+                isGroup: true
+            });
+        });
+        return acc;
+    }, []);
 
     const filteredPending = flattenedItems.filter(item =>
-        item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.returnStatus === 'Pending' && (
+            item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    );
+
+    const activeReturned = flattenedItems.filter(item =>
+        item.returnStatus === 'Returned' && (
+            item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
     );
 
     const filteredHistory = returnHistory.filter(item =>
@@ -111,19 +164,20 @@ export default function FabricReturnPage() {
         item.rereceiveChallanNo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleUpdateReturnStatus = async (inwardId: string, itemId: string, returnStatus: string) => {
+    const handleUpdateReturnStatus = async (inwardId: string, itemId: string | string[], returnStatus: string) => {
         try {
-            const res = await fetch(`/api/inward/${inwardId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    returnStatus,
-                    itemId
-                })
-            });
-            if (res.ok) {
-                await fetchData();
-            }
+            const itemIds = Array.isArray(itemId) ? itemId : [itemId];
+            await Promise.all(itemIds.map(async (id) => {
+                return fetch(`/api/inward/${inwardId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        returnStatus,
+                        itemId: id
+                    })
+                });
+            }));
+            await fetchData();
         } catch (err) {
             console.error('Update return status error:', err);
         }
@@ -131,25 +185,63 @@ export default function FabricReturnPage() {
 
     const openRereceiveModal = (item: any) => {
         setSelectedItem(item);
-        setNewColor(item.color);
+        const weights: Record<string, string> = {};
+        if (item.isGroup) {
+            item.items.forEach((it: any) => {
+                weights[it._id] = it.quantity.toString();
+            });
+            setNewColor(item.items[0].color);
+        } else {
+            setNewColor(item.color);
+        }
+
+        setRereceiveFormData({
+            challanNo: '',
+            date: new Date().toISOString().split('T')[0],
+            weight: item.isGroup ? '' : item.quantity.toString(),
+            itemWeights: weights,
+            images: [],
+            pendingFiles: []
+        });
         setIsModalOpen(true);
     };
 
     const openReturnModal = (item: any) => {
+        const baseItem = item.isGroup ? item.items[0] : item;
         setSelectedItem(item);
         setReturnFormData({
-            challanNo: item.returnChallanNo || '',
-            date: item.returnDate ? new Date(item.returnDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            images: item.returnImages || [],
+            challanNo: baseItem.returnChallanNo || '',
+            date: baseItem.returnDate ? new Date(baseItem.returnDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            images: baseItem.returnImages || [],
             pendingFiles: []
         });
         setIsReturnModalOpen(true);
     };
 
-    const openHistoryModal = (item: any) => {
-        setSelectedItem(item);
-        setIsHistoryModalOpen(true);
+    const openDetailedView = (item: any) => {
+        // Normalize history record for the preview if it's from ReturnHistory
+        if (item.partyId && !item.partyName) {
+            const normalized = {
+                ...item,
+                partyName: item.partyId.name,
+                materialName: item.materialId?.name,
+                quantity: item.originalQuantity || item.receivedQuantity,
+                items: [{
+                    color: item.originalColor || item.previousColor,
+                    materialId: item.materialId,
+                    diameter: item.diameter,
+                    quantity: item.originalQuantity || item.receivedQuantity,
+                    pcs: item.pcs || item.totalPcs,
+                    rejectionCause: item.rejectionCause || 'Color Rejection'
+                }]
+            };
+            setSelectedItem(normalized);
+        } else {
+            setSelectedItem(item);
+        }
+        setIsDetailModalOpen(true);
     };
+
 
     const handleReturnFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
@@ -185,22 +277,23 @@ export default function FabricReturnPage() {
 
             const allImages = [...returnFormData.images, ...uploadedUrls];
 
-            const res = await fetch(`/api/inward/${selectedItem.inwardId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    itemId: selectedItem._id,
-                    returnStatus: 'Returned',
-                    returnChallanNo: returnFormData.challanNo,
-                    returnDate: returnFormData.date,
-                    returnImages: allImages
-                })
-            });
+            const updateItems = selectedItem.isGroup ? selectedItem.items : [selectedItem];
+            await Promise.all(updateItems.map(async (item: any) => {
+                await fetch(`/api/inward/${selectedItem.inwardId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        itemId: item._id,
+                        returnStatus: 'Returned',
+                        returnChallanNo: returnFormData.challanNo,
+                        returnDate: returnFormData.date,
+                        returnImages: allImages
+                    })
+                });
+            }));
 
-            if (res.ok) {
-                setIsReturnModalOpen(false);
-                await fetchData();
-            }
+            setIsReturnModalOpen(false);
+            await fetchData();
         } catch (err) {
             console.error('Return confirmation error:', err);
             alert('Failed to process return. Check console.');
@@ -244,26 +337,30 @@ export default function FabricReturnPage() {
 
             const allImages = [...rereceiveFormData.images, ...uploadedUrls];
 
-            const res = await fetch(`/api/inward/${selectedItem.inwardId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    status: 'Pending',
-                    rejectionCause: '',
-                    returnStatus: '',
-                    color: newColor,
-                    itemId: selectedItem._id,
-                    // New Rereceive Details
-                    quantity: rereceiveFormData.weight,
-                    rereceiveChallanNo: rereceiveFormData.challanNo,
-                    rereceiveDate: rereceiveFormData.date,
-                    rereceiveImages: allImages
-                })
-            });
-            if (res.ok) {
-                setIsModalOpen(false);
-                await fetchData();
-            }
+            const updateItems = selectedItem.isGroup ? selectedItem.items : [selectedItem];
+
+            await Promise.all(updateItems.map(async (item: any) => {
+                const finalWeight = selectedItem.isGroup ? (rereceiveFormData.itemWeights[item._id] || item.quantity) : rereceiveFormData.weight;
+
+                return fetch(`/api/inward/${selectedItem.inwardId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: 'Pending',
+                        rejectionCause: '',
+                        returnStatus: '',
+                        color: newColor,
+                        itemId: item._id,
+                        quantity: finalWeight,
+                        rereceiveChallanNo: rereceiveFormData.challanNo,
+                        rereceiveDate: rereceiveFormData.date,
+                        rereceiveImages: allImages
+                    })
+                });
+            }));
+
+            setIsModalOpen(false);
+            await fetchData();
         } catch (err) {
             console.error('Rereceive error:', err);
         } finally {
@@ -325,7 +422,7 @@ export default function FabricReturnPage() {
                     onClick={() => setActiveTab('history')}
                     className={`px-6 py-3 text-sm font-bold transition-all relative ${activeTab === 'history' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
                 >
-                    Processed History ({filteredHistory.length})
+                    Return History ({filteredHistory.length + activeReturned.length})
                     {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.5)]"></div>}
                 </button>
             </div>
@@ -359,34 +456,46 @@ export default function FabricReturnPage() {
                                             <div className="font-bold text-foreground">{item.challanNo}</div>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <div className="text-[10px] text-muted font-medium bg-secondary/50 px-1.5 py-0.5 rounded w-fit">{new Date(item.inwardDate).toLocaleDateString()}</div>
-                                                <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight">Lot: {item.lotNo || item.globalLotNo || '-'}</div>
+                                                <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight">Lot: {item.lotNo || '-'}</div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
+                                            {item.isGroup && item.items.length > 1 && (
+                                                <div className="text-[9px] font-bold text-muted uppercase tracking-tighter mt-1">{item.items.length} Items in Group</div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-3 h-3 rounded-full border border-border shadow-sm"
-                                                    style={{ backgroundColor: item.color.toLowerCase() }}
-                                                ></div>
-                                                <span className="text-sm font-semibold text-foreground uppercase tracking-tight">{item.color}</span>
+                                            <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                                                {item.isGroup ? item.items.slice(0, 3).map((it: any, i: number) => (
+                                                    <div key={i} className="flex items-center gap-1.5 bg-secondary/30 px-2 py-0.5 rounded-full border border-border/50">
+                                                        <div className="w-2 h-2 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: it.color.toLowerCase() }}></div>
+                                                        <span className="text-[10px] font-bold uppercase tracking-tight">{it.color}</span>
+                                                    </div>
+                                                )) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-3 h-3 rounded-full border border-border shadow-sm" style={{ backgroundColor: item.color.toLowerCase() }}></div>
+                                                        <span className="text-sm font-semibold text-foreground uppercase tracking-tight">{item.color}</span>
+                                                    </div>
+                                                )}
+                                                {item.isGroup && item.items.length > 3 && (
+                                                    <span className="text-[10px] font-bold text-muted self-center ml-1">+{item.items.length - 3} more</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-bold text-primary">{item.quantity} KG</div>
+                                            <div className="text-sm font-bold text-primary">{Number(item.quantity).toFixed(2)} KG</div>
                                             <div className="text-[11px] text-muted">
-                                                {item.materialId?.name || 'Fabric'} • Dia {item.diameter}
+                                                {item.materialName} • Dia {item.diaList}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1 items-center">
+                                            <div className="flex flex-col gap-1 items-center text-center">
                                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold w-fit bg-red-500/10 text-red-600">
                                                     <XCircle className="w-3 h-3" />
                                                     REJECTED
                                                 </div>
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-500/70 ml-1">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-red-500/70">
                                                     CAUSE: {item.rejectionCause}
                                                 </span>
                                             </div>
@@ -396,7 +505,7 @@ export default function FabricReturnPage() {
                                                 ? 'bg-blue-500/10 text-blue-600'
                                                 : 'bg-orange-500/10 text-orange-600'
                                                 }`}>
-                                                {item.returnStatus === 'Returned' ? <Truck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                                                {item.returnStatus === 'Returned' && <Truck className="w-3 h-3" />}
                                                 {item.returnStatus || 'Pending'}
                                             </div>
                                         </td>
@@ -405,13 +514,6 @@ export default function FabricReturnPage() {
                                                 {(item.returnStatus === 'Returned') ? (
                                                     <>
                                                         <button
-                                                            onClick={() => openHistoryModal(item)}
-                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
-                                                            title="View History"
-                                                        >
-                                                            <Clock className="w-4 h-4" />
-                                                        </button>
-                                                        <button
                                                             onClick={() => openReturnModal(item)}
                                                             className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
                                                             title="View Return Details"
@@ -419,7 +521,7 @@ export default function FabricReturnPage() {
                                                             <Eye className="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleUpdateReturnStatus(item.inwardId, item._id, 'Pending')}
+                                                            onClick={() => handleUpdateReturnStatus(item.inwardId, item.isGroup ? item.items.map((it: any) => it._id) : item._id, 'Pending')}
                                                             className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
                                                             title="Reset to Pending"
                                                         >
@@ -430,24 +532,24 @@ export default function FabricReturnPage() {
                                                             className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-1"
                                                         >
                                                             <CheckCircle2 className="w-3 h-3" />
-                                                            Rereceived
+                                                            Rereceive
                                                         </button>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <button
-                                                            onClick={() => openHistoryModal(item)}
-                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/history"
-                                                            title="View History"
+                                                            onClick={() => openDetailedView(item)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/detail"
+                                                            title="Detailed View (Doc Format)"
                                                         >
-                                                            <Clock className="w-4 h-4" />
+                                                            <FileText className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => openReturnModal(item)}
                                                             className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm flex items-center gap-1"
                                                         >
                                                             <Truck className="w-3 h-3" />
-                                                            Return
+                                                            Return Lot
                                                         </button>
                                                     </>
                                                 )}
@@ -463,83 +565,154 @@ export default function FabricReturnPage() {
                                 <tr className="bg-secondary/30 text-xs font-bold text-muted uppercase tracking-wider border-b border-border">
                                     <th className="px-6 py-4">Inward Details</th>
                                     <th className="px-6 py-4">Dyeing House</th>
-                                    <th className="px-6 py-4">History Timeline</th>
-                                    <th className="px-6 py-4">Color Change</th>
-                                    <th className="px-6 py-4">Final Weight</th>
+                                    <th className="px-6 py-4">Status / Timeline</th>
+                                    <th className="px-6 py-4">Color Details</th>
+                                    <th className="px-6 py-4">Weight</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {loading ? (
                                     <tr><td colSpan={6} className="p-10 text-center text-muted">Loading history...</td></tr>
-                                ) : filteredHistory.length === 0 ? (
+                                ) : (filteredHistory.length === 0 && activeReturned.length === 0) ? (
                                     <tr><td colSpan={6} className="p-20 text-center">
-                                        <Clock className="w-12 h-12 text-muted mx-auto mb-4" />
-                                        <p className="text-muted">No processed return history found.</p>
+                                        <RotateCcw className="w-12 h-12 text-muted mx-auto mb-4" />
+                                        <p className="text-muted">No return history found.</p>
                                     </td></tr>
-                                ) : filteredHistory.map((hist, idx) => (
-                                    <tr key={hist._id || idx} className="hover:bg-secondary/5 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-foreground">{hist.challanNo}</div>
-                                            <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight w-fit mt-1">Lot: {hist.lotNo || '-'}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-semibold">{hist.partyId?.name || 'Unknown'}</div>
-                                            <div className="text-[10px] text-muted">{hist.materialId?.name}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1.5">
-                                                <div className="flex items-center gap-2 text-[10px]">
-                                                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                                    <span className="font-bold text-muted uppercase">Returned:</span>
-                                                    <span className="font-medium">{new Date(hist.returnDate).toLocaleDateString()}</span>
-                                                    <span className="text-primary-foreground/50 bg-secondary px-1 rounded">#{hist.returnChallanNo}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px]">
-                                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                                    <span className="font-bold text-muted uppercase">Received:</span>
-                                                    <span className="font-medium">{new Date(hist.rereceiveDate).toLocaleDateString()}</span>
-                                                    <span className="text-primary-foreground/50 bg-secondary px-1 rounded">#{hist.rereceiveChallanNo}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: (hist.previousColor || hist.originalColor)?.toLowerCase() }}></div>
-                                                    <span className="text-[9px] font-bold text-muted uppercase mt-0.5">{hist.previousColor || hist.originalColor}</span>
-                                                </div>
-                                                <ArrowRight className="w-3 h-3 text-muted" />
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: hist.newColor?.toLowerCase() }}></div>
-                                                    <span className="text-[9px] font-bold text-primary uppercase mt-0.5">{hist.newColor}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-bold text-foreground">{hist.receivedQuantity} KG</div>
-                                            <div className="text-[10px] text-muted">Was: {hist.originalQuantity} KG</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center gap-2 justify-end">
-                                                <button
-                                                    onClick={() => openHistoryModal(hist)}
-                                                    className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border"
-                                                    title="View Detailed History"
-                                                >
-                                                    <Clock className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteHistory(hist._id)}
-                                                    className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 rounded-lg transition-all border border-red-500/20"
-                                                    title="Delete History Record"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                ) : (
+                                    <>
+                                        {/* Active Returns awaiting Re-receipt */}
+                                        {activeReturned.map((item, idx) => (
+                                            <tr key={`active-${item._id}`} className="hover:bg-orange-500/5 transition-colors border-l-4 border-orange-500/20">
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-foreground">{item.challanNo}</div>
+                                                    <div className="text-[10px] text-orange-600 font-black bg-orange-500/5 px-1.5 py-0.5 rounded border border-orange-500/10 uppercase tracking-tight w-fit mt-1">
+                                                        Lot: {item.lotNo || '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
+                                                    <div className="text-[10px] text-muted">{item.materialName}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-600 animate-pulse">
+                                                        <Truck className="w-3 h-3" />
+                                                        RETURNED (AWAITING)
+                                                    </div>
+                                                    <div className="text-[9px] text-muted mt-1 font-medium">Sent: {new Date(item.items?.[0]?.returnDate || Date.now()).toLocaleDateString()}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: item.color?.toLowerCase() }}></div>
+                                                            <span className="text-[11px] font-bold">{item.color}</span>
+                                                        </div>
+                                                        <div className="text-[9px] text-muted uppercase mt-0.5">Original Color</div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-bold text-foreground">{Number(item.quantity).toFixed(2)} KG</div>
+                                                    <div className="text-[10px] text-muted">{item.totalPcs} PCS</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        <button
+                                                            onClick={() => openDetailedView(item)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/detail"
+                                                            title="Detailed View (Doc Format)"
+                                                        >
+                                                            <FileText className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openReturnModal(item)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/edit"
+                                                            title="Edit Return Information"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleUpdateReturnStatus(item.inwardId, item.items.map((it: any) => it._id), 'Pending')}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
+                                                            title="Reset to Pending"
+                                                        >
+                                                            <RotateCcw className="w-4 h-4 group-hover/reset:rotate-[-45deg] transition-transform" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openRereceiveModal(item)}
+                                                            className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-1"
+                                                        >
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                            Rereceive
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+
+                                        {/* Completed History Records */}
+                                        {filteredHistory.map((hist, idx) => (
+                                            <tr key={hist._id || idx} className="hover:bg-secondary/5 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-foreground">{hist.challanNo}</div>
+                                                    <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight w-fit mt-1">Lot: {hist.lotNo || '-'}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-semibold">{hist.partyId?.name || 'Unknown'}</div>
+                                                    <div className="text-[10px] text-muted">{hist.materialId?.name}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-2 text-[10px]">
+                                                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                                            <span className="font-bold text-muted uppercase">Returned:</span>
+                                                            <span className="font-medium">{new Date(hist.returnDate).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px]">
+                                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                            <span className="font-bold text-muted uppercase">Received:</span>
+                                                            <span className="font-medium">{new Date(hist.rereceiveDate).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: (hist.previousColor || hist.originalColor)?.toLowerCase() }}></div>
+                                                            <span className="text-[9px] font-bold text-muted uppercase mt-0.5">{hist.previousColor || hist.originalColor}</span>
+                                                        </div>
+                                                        <ArrowRight className="w-3 h-3 text-muted" />
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: hist.newColor?.toLowerCase() }}></div>
+                                                            <span className="text-[9px] font-bold text-primary uppercase mt-0.5">{hist.newColor}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-bold text-foreground">{hist.receivedQuantity} KG</div>
+                                                    <div className="text-[10px] text-muted">Was: {hist.originalQuantity} KG</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        <button
+                                                            onClick={() => openDetailedView(hist)}
+                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
+                                                            title="View Return Advice Document"
+                                                        >
+                                                            <FileText className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteHistory(hist._id)}
+                                                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 rounded-lg transition-all border border-red-500/20"
+                                                            title="Delete History Record"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </>
+                                )}
                             </tbody>
                         </table>
                     )}
@@ -610,17 +783,46 @@ export default function FabricReturnPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Final Weight (KG)</label>
-                                        <input
-                                            type="number"
-                                            value={rereceiveFormData.weight}
-                                            onChange={(e) => setRereceiveFormData({ ...rereceiveFormData, weight: e.target.value })}
-                                            placeholder="0.00"
-                                            className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-                                        />
-                                    </div>
+                                <div className="space-y-4">
+                                    {selectedItem.isGroup ? (
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Received Weights per Item</label>
+                                            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                                                {selectedItem.items.map((it: any, i: number) => (
+                                                    <div key={i} className="flex items-center gap-3 p-3 bg-secondary/20 rounded-xl border border-border">
+                                                        <div className="w-8 h-8 rounded-full flex-shrink-0 border border-border" style={{ backgroundColor: it.color.toLowerCase() }}></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-[10px] font-bold truncate">{it.materialId?.name || 'Fabric'} (Dia {it.diameter})</div>
+                                                            <div className="text-[9px] text-muted">Original: {it.quantity} KG</div>
+                                                        </div>
+                                                        <div className="w-24">
+                                                            <input
+                                                                type="number"
+                                                                value={rereceiveFormData.itemWeights[it._id] || ''}
+                                                                onChange={(e) => setRereceiveFormData({
+                                                                    ...rereceiveFormData,
+                                                                    itemWeights: { ...rereceiveFormData.itemWeights, [it._id]: e.target.value }
+                                                                })}
+                                                                placeholder="0.00"
+                                                                className="w-full h-8 px-2 bg-background border border-border rounded-lg text-xs font-bold focus:ring-1 focus:ring-primary/20 outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Final Weight (KG)</label>
+                                            <input
+                                                type="number"
+                                                value={rereceiveFormData.weight}
+                                                onChange={(e) => setRereceiveFormData({ ...rereceiveFormData, weight: e.target.value })}
+                                                placeholder="0.00"
+                                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
                                         <label className="text-xs font-black uppercase text-muted/60 tracking-wider ml-1">Receive Date</label>
                                         <input
@@ -685,7 +887,7 @@ export default function FabricReturnPage() {
                             </button>
                             <button
                                 onClick={handleRereceiveAndReset}
-                                disabled={isUpdating || !newColor || !rereceiveFormData.weight}
+                                disabled={isUpdating || !newColor || (selectedItem.isGroup ? false : !rereceiveFormData.weight)}
                                 className="flex-[2] px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {isUpdating ? 'Updating...' : 'Confirm Receipt'}
@@ -720,11 +922,25 @@ export default function FabricReturnPage() {
 
                         <div className="p-6 space-y-6 overflow-y-auto">
                             {/* Item Summary */}
-                            <div className="bg-secondary/30 p-4 rounded-xl flex gap-4 items-center">
-                                <div className="w-10 h-10 rounded-full border border-border flex-shrink-0" style={{ backgroundColor: selectedItem?.color.toLowerCase() }}></div>
-                                <div>
-                                    <div className="font-bold">{selectedItem?.color} - {selectedItem?.materialId?.name}</div>
-                                    <div className="text-sm text-muted">Quantity: {selectedItem?.quantity} {selectedItem?.unit} (Dia: {selectedItem?.diameter})</div>
+                            <div className="bg-secondary/30 p-4 rounded-xl space-y-3">
+                                <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-2">
+                                    <span className="text-xs font-bold text-muted uppercase">Items to Return</span>
+                                    <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{selectedItem.isGroup ? selectedItem.items.length : 1} TOTAL</span>
+                                </div>
+                                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {(selectedItem.isGroup ? selectedItem.items : [selectedItem]).map((it: any, i: number) => (
+                                        <div key={i} className="flex gap-4 items-center bg-card p-2 rounded-lg border border-border/10">
+                                            <div className="w-8 h-8 rounded-full border border-border flex-shrink-0" style={{ backgroundColor: it.color.toLowerCase() }}></div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-[11px] truncate">{it.color} • {it.materialId?.name}</div>
+                                                <div className="text-[10px] text-muted">{it.quantity} KG (Dia {it.diameter})</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="pt-2 flex justify-between items-center text-sm font-black border-t border-border/50">
+                                    <span className="text-muted text-xs uppercase">Total Return Weight</span>
+                                    <span className="text-primary text-lg tracking-tight">{Number(selectedItem.quantity || 0).toFixed(2)} KG</span>
                                 </div>
                             </div>
 
@@ -737,7 +953,6 @@ export default function FabricReturnPage() {
                                         onChange={(e) => setReturnFormData({ ...returnFormData, challanNo: e.target.value })}
                                         placeholder="e.g. RET-001"
                                         className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold"
-                                        disabled={selectedItem?.returnStatus === 'Returned'}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -747,7 +962,6 @@ export default function FabricReturnPage() {
                                         value={returnFormData.date}
                                         onChange={(e) => setReturnFormData({ ...returnFormData, date: e.target.value })}
                                         className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                        disabled={selectedItem?.returnStatus === 'Returned'}
                                     />
                                 </div>
                             </div>
@@ -755,7 +969,7 @@ export default function FabricReturnPage() {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase text-muted ml-1">Challan / Return Proof Images</label>
                                 <div className="flex flex-wrap gap-3">
-                                    <label className={`w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/30 transition-all text-muted ${uploadingImage || selectedItem?.returnStatus === 'Returned' ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <label className={`w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/30 transition-all text-muted ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
                                         <div className="p-1 bg-secondary rounded-full"><div className="w-4 h-4 border-2 border-muted/50 rotate-90" /></div>
                                         <span className="text-[9px] font-bold">Add Photo</span>
                                         <input
@@ -764,7 +978,7 @@ export default function FabricReturnPage() {
                                             multiple
                                             accept="image/*"
                                             onChange={handleReturnFileUpload}
-                                            disabled={uploadingImage || selectedItem?.returnStatus === 'Returned'}
+                                            disabled={uploadingImage}
                                         />
                                     </label>
 
@@ -796,138 +1010,199 @@ export default function FabricReturnPage() {
                                 onClick={() => setIsReturnModalOpen(false)}
                                 className="flex-1 px-4 py-3 border border-border bg-card hover:bg-secondary text-foreground font-bold rounded-xl transition-all"
                             >
-                                {selectedItem?.returnStatus === 'Returned' ? 'Close' : 'Cancel'}
+                                Cancel
                             </button>
-                            {selectedItem?.returnStatus !== 'Returned' && (
-                                <button
-                                    onClick={handleConfirmReturn}
-                                    disabled={isUpdating || !returnFormData.challanNo}
-                                    className="flex-[2] px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {isUpdating ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            Processing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            Confirm Return
-                                        </>
-                                    )}
-                                </button>
-                            )}
+                            <button
+                                onClick={handleConfirmReturn}
+                                disabled={isUpdating || !returnFormData.challanNo}
+                                className="flex-[2] px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isUpdating ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        {selectedItem?.returnStatus === 'Returned' ? 'Update Information' : 'Confirm Return'}
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
 
-            {/* NEW: History Modal */}
-            {isHistoryModalOpen && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-card w-full max-w-2xl rounded-2xl border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/20">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Clock className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold">Item History</h2>
-                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">
-                                        {selectedItem?.color} - {selectedItem?.materialId?.name}
-                                        {selectedItem && ` • Back from ${selectedItem.partyName || selectedItem.partyId?.name || 'Unknown'}`}
-                                    </p>
-                                </div>
+            {/* NEW: Detailed View Modal (PDF Format) */}
+            {isDetailModalOpen && selectedItem && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] overflow-y-auto flex justify-center py-10 px-4">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 h-fit">
+                        {/* Action Header (Not part of print) */}
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl print:hidden">
+                            <div className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary" />
+                                <span className="font-bold text-gray-700">Return Document Preview</span>
                             </div>
-                            <button
-                                onClick={() => setIsHistoryModalOpen(false)}
-                                className="p-2 hover:bg-secondary rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => window.print()}
+                                    className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    Print Document
+                                </button>
+                                <button
+                                    onClick={() => setIsDetailModalOpen(false)}
+                                    className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="p-6 overflow-y-auto space-y-6">
-                            {!selectedItem?.history || selectedItem.history.length === 0 ? (
-                                <div className="text-center p-10 text-muted">
-                                    <Clock className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                    No history records found for this item.
+                        {/* Document Content */}
+                        <div className="p-6 md:p-12 print:p-0" id="return-document">
+                            <div className="bg-white text-black font-serif p-4 md:p-10 border border-gray-100 shadow-sm print:shadow-none print:border-none rounded-xl">
+                                {/* Letterhead */}
+                                <div className="flex justify-between items-start mb-12 border-b-2 border-slate-900 pb-8">
+                                    <div>
+                                        <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-1">{systemSettings?.companyName || 'SHYAMA FABRICS'}</h1>
+                                        <div className="text-[10px] md:text-xs uppercase font-bold tracking-widest text-muted-foreground">Quality Fabric & Processing Unit</div>
+                                        <div className="text-[9px] md:text-[10px] text-muted-foreground mt-4 leading-relaxed max-w-[250px]">
+                                            {systemSettings?.address || 'Office Address details from Master Data'}<br />
+                                            {systemSettings?.email && `Email: ${systemSettings.email}`} {systemSettings?.contactNumber && `| Contact: ${systemSettings.contactNumber}`}
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xl md:text-2xl font-black mb-1">RETURN ADVICE</div>
+                                        <div className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase opacity-50 mb-6">Original Copy</div>
+                                        <div className="space-y-1">
+                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-gray-400">LOT NO:</span> <span className="font-bold ml-2 underline underline-offset-4 decoration-black/20 text-sm tracking-tight">{selectedItem.lotNo}</span></div>
+                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-gray-400">DATE:</span> <span className="font-bold ml-2">{new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-gray-400">STATUS:</span> <span className="font-bold ml-2 text-red-600">REJECTION RETURN</span></div>
+                                        </div>
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="relative border-l-2 border-border/50 ml-4 space-y-8 pl-8 py-2">
-                                    {selectedItem.history.map((event: any, idx: number) => (
-                                        <div key={idx} className="relative group">
-                                            {/* Timeline Dot */}
-                                            <div className={`absolute -left-[39px] top-0 w-5 h-5 rounded-full border-4 border-card ${event.action === 'Returned' ? 'bg-orange-500' :
-                                                event.action === 'Rereceived' ? 'bg-green-500' : 'bg-red-500'
-                                                }`}></div>
 
-                                            <div className="bg-secondary/20 p-4 rounded-xl border border-border/50 hover:border-border transition-colors">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <span className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded ${event.action === 'Returned' ? 'bg-orange-500/10 text-orange-600' :
-                                                            event.action === 'Rereceived' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
-                                                            }`}>
-                                                            {event.action}
-                                                        </span>
-                                                        <div className="text-[10px] text-muted font-bold mt-1">
-                                                            {new Date(event.date).toLocaleDateString()} at {new Date(event.date).toLocaleTimeString()}
-                                                        </div>
-                                                    </div>
-                                                    {event.challanNo && (
-                                                        <div className="text-right">
-                                                            <div className="text-[10px] text-muted font-bold uppercase">Challan No</div>
-                                                            <div className="font-bold text-sm">{event.challanNo}</div>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                {/* Addresses */}
+                                <div className="grid grid-cols-2 gap-12 mb-12">
+                                    <div className="space-y-2">
+                                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Return To (Dyeing House)</div>
+                                        <div className="text-lg font-black tracking-tight">{selectedItem.partyName}</div>
+                                        <div className="text-[10px] text-muted-foreground leading-relaxed">
+                                            Assigned Processing Unit<br />
+                                            Subject: Color Rejection & Reprocessing
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 bg-slate-50 p-4 border-l-4 border-slate-900 rounded-r-lg">
+                                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reference Inward</div>
+                                        <div className="text-md font-bold underline underline-offset-4 decoration-black/10">Inward No: {selectedItem.challanNo}</div>
+                                        <div className="text-[10px] text-muted-foreground">Original Receipt: {new Date(selectedItem.inwardDate).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
 
-                                                <div className="grid grid-cols-2 gap-4 text-sm mt-3">
-                                                    {event.quantity && (
-                                                        <div>
-                                                            <span className="text-muted text-xs">Quantity:</span>
-                                                            <span className="font-bold ml-1">{event.quantity} KG</span>
-                                                        </div>
-                                                    )}
-                                                    {event.color && (
-                                                        <div>
-                                                            <span className="text-muted text-xs">Color:</span>
-                                                            <span className="font-bold ml-1">{event.color}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                {/* Table Header */}
+                                <div className="grid grid-cols-12 bg-slate-50 text-slate-900 text-[9px] font-black uppercase tracking-widest p-4 rounded-t-lg border border-slate-200 border-b-slate-300">
+                                    <div className="col-span-1 text-center">Sr.</div>
+                                    <div className="col-span-3 text-left px-4">Fabric Color / Description</div>
+                                    <div className="col-span-1 text-center">Dia</div>
+                                    <div className="col-span-2 text-center text-primary">Pcs</div>
+                                    <div className="col-span-2 text-center">Gross Wt. (KG)</div>
+                                    <div className="col-span-3 text-right">Reason for Return</div>
+                                </div>
 
-                                                {event.images && event.images.length > 0 && (
-                                                    <div className="mt-4 pt-3 border-t border-border/50">
-                                                        <div className="text-[10px] font-bold text-muted uppercase mb-2">Attached Documents</div>
-                                                        <div className="flex gap-2 flex-wrap">
-                                                            {event.images.map((img: string, i: number) => (
-                                                                <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="block w-16 h-16 rounded-lg overflow-hidden border border-border hover:opacity-80 transition-opacity">
-                                                                    <img src={img} className="w-full h-full object-cover" alt="History doc" />
-                                                                </a>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                {/* Table Body */}
+                                <div className="border-x border-b border-gray-100 divide-y divide-gray-100 rounded-b-lg overflow-hidden">
+                                    {(selectedItem.isGroup ? selectedItem.items : [selectedItem]).map((it: any, i: number) => (
+                                        <div key={i} className="grid grid-cols-12 text-[10px] md:text-[11px] p-3 md:p-5 font-medium hover:bg-gray-50/50 transition-colors">
+                                            <div className="col-span-1 text-center font-bold text-gray-400">{i + 1}</div>
+                                            <div className="col-span-3 px-2 md:px-4">
+                                                <div className="font-black text-xs md:text-sm tracking-tight">{it.color}</div>
+                                                <div className="text-[8px] md:text-[10px] text-muted-foreground uppercase">{it.materialId?.name || 'Fabric Group'}</div>
+                                            </div>
+                                            <div className="col-span-1 text-center text-gray-500 font-bold">{it.diameter || '-'}</div>
+                                            <div className="col-span-2 text-center">
+                                                <span className="text-xs md:text-md font-black bg-primary/5 px-2 py-1 rounded text-primary">{it.pcs || '-'}</span>
+                                            </div>
+                                            <div className="col-span-2 text-center text-sm md:text-lg font-black tracking-tighter">{Number(it.quantity).toFixed(2)}</div>
+                                            <div className="col-span-3 text-right font-black italic text-red-600 bg-red-50/30 px-2 md:px-3 py-1 rounded border border-red-100/50 flex flex-col justify-center items-end">
+                                                <span className="text-[7px] md:text-[8px] uppercase font-bold opacity-50 mb-0.5">Rejected For</span>
+                                                <span className="text-[9px] md:text-[10px]">{it.rejectionCause || 'COLOR OUT'}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="p-6 border-t border-border bg-secondary/10">
-                            <button
-                                onClick={() => setIsHistoryModalOpen(false)}
-                                className="w-full px-4 py-3 border border-border bg-card hover:bg-secondary text-foreground font-bold rounded-xl transition-all"
-                            >
-                                Close History
-                            </button>
+                                {/* Summary Footer */}
+                                <div className="mt-8 flex justify-end gap-4">
+                                    <div className="flex-1 max-w-[400px]">
+                                        <div className="flex justify-between items-center bg-slate-100/50 text-slate-900 p-3 md:p-4 rounded-2xl border border-slate-200">
+                                            <span className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-slate-400 ml-2">Total Pieces</span>
+                                            <div className="text-xl md:text-2xl font-black tracking-tighter mr-2">
+                                                {selectedItem.totalPcs || selectedItem.items?.reduce((s: any, i: any) => s + (Number(i.pcs) || 0), 0) || '-'} <span className="text-xs opacity-50 uppercase">PCS</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="w-full md:w-[400px] space-y-3">
+                                        <div className="flex justify-between items-center bg-slate-50 text-slate-900 p-4 md:p-6 rounded-2xl shadow-sm border-2 border-slate-200">
+                                            <div className="flex flex-col border-r border-slate-200 pr-6 mr-6">
+                                                <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Total Return Weight</span>
+                                                <span className="text-[8px] md:text-[10px] text-slate-300 font-bold uppercase mt-0.5">Verified Balance</span>
+                                            </div>
+                                            <div className="text-2xl md:text-4xl font-black tracking-tighter whitespace-nowrap flex items-baseline gap-2 text-slate-900">
+                                                {Number(selectedItem.quantity).toFixed(2)}
+                                                <span className="text-sm md:text-lg text-slate-400 font-bold italic">KG</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Signature Block */}
+                                <div className="mt-24 grid grid-cols-2 gap-24 pt-12 border-t-2 border-gray-50">
+                                    <div>
+                                        <div className="h-16 w-32 border-b-2 border-dashed border-gray-300 mb-2"></div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest">Authorized Signature</div>
+                                        <div className="text-[9px] text-muted-foreground uppercase opacity-50 mt-1">{systemSettings?.companyName || 'Shyama Fabrics'} Quality Dept.</div>
+                                    </div>
+                                    <div className="text-right flex flex-col items-end">
+                                        <div className="h-16 w-32 border-b-2 border-dashed border-gray-300 mb-2"></div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest">Dyeing Representative</div>
+                                        <div className="text-[9px] text-muted-foreground uppercase opacity-50 mt-1">Acknowledgment of Receipt</div>
+                                    </div>
+                                </div>
+
+                                {/* Disclaimer */}
+                                <div className="mt-20 text-[9px] text-center text-muted-foreground italic leading-relaxed opacity-40">
+                                    "This is a computer generated document issued for quality reconcile purposes. Please ensure the fabric is redyed to match the approved standard before Rereceiving."
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <style jsx global>{`
+                        @media print {
+                            body * {
+                                visibility: hidden;
+                            }
+                            #return-document, #return-document * {
+                                visibility: visible;
+                            }
+                            #return-document {
+                                position: absolute;
+                                left: 0;
+                                top: 0;
+                                width: 100%;
+                            }
+                            .print\\:hidden {
+                                display: none !important;
+                            }
+                        }
+                    `}</style>
                 </div>
             )}
         </div>
     );
 }
+

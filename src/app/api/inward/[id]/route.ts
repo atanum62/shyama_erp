@@ -60,6 +60,23 @@ export async function PATCH(
                 updateData["items.$.color"] = body.color;
             }
 
+            // Handle Reweight History Tracking
+            if (body.isReweightAction) {
+                const currentInward = await Inward.findById(id);
+                const currentItem = currentInward?.items.find((i: any) => i._id.toString() === body.itemId);
+                if (currentItem) {
+                    const reweightEvent = {
+                        action: 'Reweighted',
+                        timestamp: new Date(),
+                        oldWeight: currentItem.quantity,
+                        newWeight: Number(body.quantity),
+                        color: currentItem.color,
+                        remarks: body.remarks || 'Fabric Reweighted'
+                    };
+                    updateData["$push"] = { "items.$.history": reweightEvent };
+                }
+            }
+
             // Handle Rereceive Logic (History Tracking)
             if (body.rereceiveChallanNo !== undefined || body.rereceiveDate !== undefined) {
                 const currentInward = await Inward.findById(id);
@@ -75,7 +92,7 @@ export async function PATCH(
                     if (currentItem.returnStatus === 'Returned') {
                         historyEvents.push({
                             action: 'Returned',
-                            date: currentItem.returnDate || new Date(),
+                            timestamp: currentItem.returnDate || new Date(),
                             challanNo: currentItem.returnChallanNo,
                             images: currentItem.returnImages,
                             color: currentItem.color,
@@ -86,7 +103,7 @@ export async function PATCH(
                     // 2. Add the 'Rereceived' event
                     const rereceiveEvent = {
                         action: 'Rereceived',
-                        date: body.rereceiveDate || new Date(),
+                        timestamp: body.rereceiveDate || new Date(),
                         challanNo: body.rereceiveChallanNo,
                         images: body.rereceiveImages || [],
                         color: body.color || currentItem.color,

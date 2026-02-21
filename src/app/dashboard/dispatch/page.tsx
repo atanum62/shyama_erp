@@ -6,7 +6,7 @@ export default function DispatchPage() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Dispatch (Delivery Challans)
             </h1>
-            <p className="text-muted">Manage the final delivery of finished goods to clients (LUX/Rupa).</p>
+            <p className="text-muted">Manage the final delivery of finished goods to clients .</p>
 
             <div className="p-12 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-center">
                 <div className="text-4xl mb-4">🚚</div>

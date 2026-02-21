@@ -278,7 +278,7 @@ export default function StitchingPage() {
                                     </select>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold uppercase text-muted">Client (LUX/Rupa)</label>
+                                    <label className="text-[10px] font-bold uppercase text-muted">Client </label>
                                     <select
                                         required
                                         value={formData.clientId}
