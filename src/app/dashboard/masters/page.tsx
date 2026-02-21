@@ -17,7 +17,8 @@ import {
     X,
     Palette,
     FileText,
-    Ruler
+    Ruler,
+    ClipboardList
 } from 'lucide-react';
 import ConsumptionPanel from '../consumption/page';
 import DiameterMappingPanel from '../diameter-mapping/page';
@@ -30,6 +31,7 @@ export default function MastersPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any | null>(null);
+    const [viewingRates, setViewingRates] = useState<any | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -42,7 +44,17 @@ export default function MastersPage() {
         category: 'Fabric', // for materials
         unit: 'KG', // for materials
         hexCode: '', // for colors
+        // Stitcher specific
+        bankDetails: {
+            bankName: '',
+            accountNumber: '',
+            ifscCode: '',
+            branchName: '',
+        },
+        stitchingRates: [] as { productId: string; category: string; rate: number }[],
     });
+
+    const [productCategories, setProductCategories] = useState<{ id: string, name: string }[]>([]);
 
     const tabConfig: Record<Tab, { label: string; icon: any; apiType?: string; category?: string }> = {
         'clients': { label: 'Clients ', icon: Building2, apiType: 'Client' },
@@ -68,6 +80,8 @@ export default function MastersPage() {
                 url = '/api/masters/materials';
             } else if (activeTab === 'colors') {
                 url = '/api/masters/colors';
+            } else if (activeTab === 'stitchers') {
+                url = '/api/masters/stitchers';
             } else {
                 url = `/api/masters/parties?type=${tabConfig[activeTab].apiType}`;
             }
@@ -85,7 +99,26 @@ export default function MastersPage() {
 
     useEffect(() => {
         fetchData();
+        if (activeTab === 'stitchers') {
+            fetchProductCategories();
+        }
     }, [activeTab]);
+
+    const fetchProductCategories = async () => {
+        try {
+            const res = await fetch('/api/consumption');
+            const json = await res.json();
+            if (Array.isArray(json)) {
+                const categories = json.map((item: any) => ({
+                    id: item._id,
+                    name: item.productName
+                }));
+                setProductCategories(categories);
+            }
+        } catch (err) {
+            console.error('Error fetching product categories:', err);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,6 +126,7 @@ export default function MastersPage() {
             let url = '';
             if (activeTab === 'materials') url = '/api/masters/materials';
             else if (activeTab === 'colors') url = '/api/masters/colors';
+            else if (activeTab === 'stitchers') url = '/api/masters/stitchers';
             else url = '/api/masters/parties';
 
             // Auto-gen code if empty
@@ -121,7 +155,11 @@ export default function MastersPage() {
                         contactPerson: formData.contactPerson,
                         contactNumber: formData.phone,
                         address: formData.address,
-                        gstin: formData.gstIn
+                        gstin: formData.gstIn,
+                        ...(activeTab === 'stitchers' ? {
+                            bankDetails: formData.bankDetails,
+                            stitchingRates: formData.stitchingRates
+                        } : {})
                     };
 
             const res = await fetch(url, {
@@ -147,7 +185,9 @@ export default function MastersPage() {
                 ? `/api/masters/materials?id=${id}`
                 : activeTab === 'colors'
                     ? `/api/masters/colors?id=${id}`
-                    : `/api/masters/parties?id=${id}`;
+                    : activeTab === 'stitchers'
+                        ? `/api/masters/stitchers?id=${id}`
+                        : `/api/masters/parties?id=${id}`;
 
             const res = await fetch(url, { method: 'DELETE' });
             if (res.ok) {
@@ -171,6 +211,8 @@ export default function MastersPage() {
                 contactPerson: '',
                 gstIn: '',
                 hexCode: '',
+                bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
+                stitchingRates: [],
             });
         } else if (activeTab === 'colors') {
             setFormData({
@@ -183,6 +225,8 @@ export default function MastersPage() {
                 gstIn: '',
                 category: 'Fabric',
                 unit: 'KG',
+                bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
+                stitchingRates: [],
             });
         } else {
             setFormData({
@@ -195,6 +239,11 @@ export default function MastersPage() {
                 category: 'Fabric',
                 unit: 'KG',
                 hexCode: '',
+                bankDetails: item.bankDetails || { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
+                stitchingRates: productCategories.map(cat => {
+                    const existing = (item.stitchingRates || []).find((r: any) => r.productId === cat.id || r.category === cat.name);
+                    return { productId: cat.id, category: cat.name, rate: existing ? existing.rate : 0 };
+                }),
             });
         }
         setIsModalOpen(true);
@@ -203,7 +252,19 @@ export default function MastersPage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
-        setFormData({ name: '', code: '', phone: '', address: '', contactPerson: '', gstIn: '', category: 'Fabric', unit: 'KG', hexCode: '' });
+        setFormData({
+            name: '',
+            code: '',
+            phone: '',
+            address: '',
+            contactPerson: '',
+            gstIn: '',
+            category: 'Fabric',
+            unit: 'KG',
+            hexCode: '',
+            bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
+            stitchingRates: []
+        });
     };
 
     return (
@@ -287,6 +348,7 @@ export default function MastersPage() {
                                                 <th className="px-6 py-4">Contact</th>
                                                 <th className="px-6 py-4">Address</th>
                                                 <th className="px-6 py-4">GST / ID</th>
+                                                {activeTab === 'stitchers' && <th className="px-6 py-4">Rates</th>}
                                             </>
                                         )}
                                         {activeTab === 'materials' && (
@@ -324,6 +386,17 @@ export default function MastersPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-[11px] text-muted font-mono">{item.gstin || '-'}</td>
+                                                    {activeTab === 'stitchers' && (
+                                                        <td className="px-6 py-4">
+                                                            <button
+                                                                onClick={() => setViewingRates(item)}
+                                                                className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
+                                                            >
+                                                                <FileText className="w-3 h-3" />
+                                                                View Rates
+                                                            </button>
+                                                        </td>
+                                                    )}
                                                 </>
                                             )}
                                             {activeTab === 'materials' && (
@@ -384,6 +457,44 @@ export default function MastersPage() {
             {activeTab === 'diameter-mapping' && (
                 <div className="mt-2">
                     <DiameterMappingPanel />
+                </div>
+            )}
+
+            {/* Viewing Rates Modal */}
+            {viewingRates && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setViewingRates(null)} />
+                    <div className="relative bg-card w-full max-w-sm rounded-2xl shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 border-b border-border flex items-center justify-between bg-primary/5">
+                            <h3 className="text-sm font-bold flex items-center gap-2">
+                                <ClipboardList className="w-4 h-4 text-primary" />
+                                Stitching Rates: {viewingRates.name}
+                            </h3>
+                            <button onClick={() => setViewingRates(null)} className="p-1 hover:bg-card rounded-md">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
+                            {(viewingRates.stitchingRates || []).length > 0 ? (
+                                viewingRates.stitchingRates.map((r: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-center p-3 bg-secondary/20 rounded-xl border border-border transition-all hover:bg-secondary/30">
+                                        <span className="text-sm font-medium">{r.category}</span>
+                                        <span className="text-sm font-bold text-primary">₹{r.rate.toFixed(2)} <span className="text-[10px] text-muted normal-case font-medium">/doz</span></span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-xs text-muted text-center py-6">No rates defined for this stitcher.</p>
+                            )}
+                        </div>
+                        <div className="p-4 bg-secondary/10 border-t border-border">
+                            <button
+                                onClick={() => setViewingRates(null)}
+                                className="w-full py-2 bg-background border border-border rounded-xl text-xs font-bold hover:bg-secondary transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -507,6 +618,135 @@ export default function MastersPage() {
                                                 placeholder="19XXXXX..."
                                             />
                                         </div>
+
+                                        {activeTab === 'stitchers' && (
+                                            <>
+                                                <div className="pt-4 border-t border-border">
+                                                    <h4 className="text-sm font-bold mb-4">Bank Details</h4>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-bold uppercase text-muted tracking-wider">Bank Name</label>
+                                                            <input
+                                                                value={formData.bankDetails.bankName}
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    bankDetails: { ...formData.bankDetails, bankName: e.target.value }
+                                                                })}
+                                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                                                                placeholder="e.g. HDFC Bank"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-bold uppercase text-muted tracking-wider">Account Number</label>
+                                                            <input
+                                                                value={formData.bankDetails.accountNumber}
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    bankDetails: { ...formData.bankDetails, accountNumber: e.target.value }
+                                                                })}
+                                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                                                                placeholder="1234567890"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-bold uppercase text-muted tracking-wider">IFSC Code</label>
+                                                            <input
+                                                                value={formData.bankDetails.ifscCode}
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    bankDetails: { ...formData.bankDetails, ifscCode: e.target.value }
+                                                                })}
+                                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono"
+                                                                placeholder="HDFC0001234"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-bold uppercase text-muted tracking-wider">Branch Name</label>
+                                                            <input
+                                                                value={formData.bankDetails.branchName}
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    bankDetails: { ...formData.bankDetails, branchName: e.target.value }
+                                                                })}
+                                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                                                                placeholder="Park Street"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-4 border-t border-border">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h4 className="text-sm font-bold">Stitching Rates</h4>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData({
+                                                                ...formData,
+                                                                stitchingRates: [...formData.stitchingRates, { productId: '', category: '', rate: 0 }]
+                                                            })}
+                                                            className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                            Add Category
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {formData.stitchingRates.map((rateObj, idx) => (
+                                                            <div key={idx} className="flex items-center gap-2 p-2 bg-secondary/20 rounded-xl border border-border">
+                                                                <select
+                                                                    value={rateObj.productId || rateObj.category}
+                                                                    onChange={(e) => {
+                                                                        const selectedProduct = productCategories.find(p => p.id === e.target.value);
+                                                                        const newRates = [...formData.stitchingRates];
+                                                                        newRates[idx].productId = e.target.value;
+                                                                        newRates[idx].category = selectedProduct ? selectedProduct.name : e.target.value;
+                                                                        setFormData({ ...formData, stitchingRates: newRates });
+                                                                    }}
+                                                                    className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-sm font-medium outline-none"
+                                                                >
+                                                                    <option value="">Select Category</option>
+                                                                    {productCategories.map(cat => (
+                                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                                    ))}
+                                                                </select>
+
+                                                                <div className="flex items-center gap-1.5 min-w-[140px]">
+                                                                    <span className="text-xs text-muted">₹</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={rateObj.rate}
+                                                                        onChange={(e) => {
+                                                                            const newRates = [...formData.stitchingRates];
+                                                                            newRates[idx].rate = parseFloat(e.target.value) || 0;
+                                                                            setFormData({ ...formData, stitchingRates: newRates });
+                                                                        }}
+                                                                        className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-sm text-right font-bold"
+                                                                        placeholder="0.00"
+                                                                    />
+                                                                    <span className="text-[10px] text-muted font-bold">/doz</span>
+                                                                </div>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newRates = formData.stitchingRates.filter((_, i) => i !== idx);
+                                                                        setFormData({ ...formData, stitchingRates: newRates });
+                                                                    }}
+                                                                    className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg text-muted transition-colors"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        {formData.stitchingRates.length === 0 && (
+                                                            <div className="text-center py-6 border-2 border-dashed border-border rounded-xl">
+                                                                <p className="text-xs text-muted">No rates defined. Click "Add Category" to start.</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </>
                                 )}
 

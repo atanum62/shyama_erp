@@ -44,7 +44,9 @@ export default function AccountingPage() {
         try {
             const [payRes, partyRes] = await Promise.all([
                 fetch(`/api/payments?type=${activeTab}`),
-                fetch(`/api/masters/parties?type=${activeTab === 'Receivable' ? 'Client' : 'Stitcher'}`)
+                activeTab === 'Receivable'
+                    ? fetch('/api/masters/parties?type=Client')
+                    : fetch('/api/masters/stitchers')
             ]);
 
             const [pData, pyData] = await Promise.all([
@@ -68,10 +70,14 @@ export default function AccountingPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const payload = {
+                ...formData,
+                onModel: activeTab === 'Receivable' ? 'Party' : 'Stitcher'
+            };
             const res = await fetch('/api/payments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
                 setIsModalOpen(false);

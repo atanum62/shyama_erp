@@ -24,6 +24,7 @@ export interface IPayment extends Document {
     status: PaymentStatus;
 
     description?: string;
+    onModel: 'Party' | 'Stitcher';
     createdAt: Date;
     updatedAt: Date;
 }
@@ -31,7 +32,8 @@ export interface IPayment extends Document {
 const PaymentSchema: Schema = new Schema(
     {
         referenceId: { type: String, required: true }, // Not unique globally, maybe just invoice no
-        partyId: { type: Schema.Types.ObjectId, ref: 'Party', required: true },
+        partyId: { type: Schema.Types.ObjectId, required: true, refPath: 'onModel' },
+        onModel: { type: String, required: true, enum: ['Party', 'Stitcher'] },
         amount: { type: Number, required: true },
         paidAmount: { type: Number, default: 0 },
         balanceAmount: { type: Number, default: 0 },

@@ -51,7 +51,7 @@ export default function StitchingPage() {
         try {
             const [ordersRes, stitcherRes, clientRes, cuttingRes, accessoryRes] = await Promise.all([
                 fetch('/api/stitching'),
-                fetch('/api/masters/parties?type=Stitcher'),
+                fetch('/api/masters/stitchers'),
                 fetch('/api/masters/parties?type=Client'),
                 fetch('/api/cutting'),
                 fetch('/api/masters/materials?category=Accessory')
