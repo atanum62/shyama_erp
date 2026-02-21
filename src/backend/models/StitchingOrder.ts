@@ -40,7 +40,7 @@ export interface IStitchingOrder extends Document {
 const StitchingOrderSchema: Schema = new Schema(
     {
         workOrderNo: { type: String, required: true, unique: true, index: true },
-        stitcherId: { type: Schema.Types.ObjectId, ref: 'Party', required: true },
+        stitcherId: { type: Schema.Types.ObjectId, ref: 'Stitcher', required: true },
         clientId: { type: Schema.Types.ObjectId, ref: 'Party', required: true },
 
         description: { type: String },
