@@ -28,6 +28,8 @@ export default function ConsumptionPage() {
     const [variations, setVariations] = useState<any[]>([]);
     const [newCompName, setNewCompName] = useState('');
     const [newSizeVal, setNewSizeVal] = useState('');
+    const [renamingCompIdx, setRenamingCompIdx] = useState<number | null>(null);
+    const [renameVal, setRenameVal] = useState('');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => { fetchConsumptions(); fetchProducts(); }, []);
@@ -98,6 +100,44 @@ export default function ConsumptionPage() {
             ...v,
             consumption: v.consumption.filter((_: any, i: number) => i !== idx)
         })));
+    };
+
+    const renameComponent = (idx: number, newName: string) => {
+        const oldName = components[idx];
+        if (!newName.trim() || newName === oldName || components.includes(newName)) return;
+        setComponents(prev => {
+            const next = [...prev];
+            next[idx] = newName;
+            return next;
+        });
+        setVariations(prev => prev.map(v => ({
+            ...v,
+            consumption: v.consumption.map((c: any) => c.name === oldName ? { ...c, name: newName } : c)
+        })));
+    };
+
+    const moveComponent = (idx: number, direction: 'left' | 'right') => {
+        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= components.length) return;
+
+        setComponents(prev => {
+            const next = [...prev];
+            [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+            return next;
+        });
+
+        // Reordering the consumption array inside variations is optional since we map by name in the UI,
+        // but it's cleaner to keep the underlying data order in sync with headers.
+        setVariations(prev => prev.map(v => {
+            const nextCons = [...v.consumption];
+            // Identify original indices in the consumption array based on names
+            const nameIdx = nextCons.findIndex(c => c.name === components[idx]);
+            const targetNameIdx = nextCons.findIndex(c => c.name === components[newIdx]);
+            if (nameIdx !== -1 && targetNameIdx !== -1) {
+                [nextCons[nameIdx], nextCons[targetNameIdx]] = [nextCons[targetNameIdx], nextCons[nameIdx]];
+            }
+            return { ...v, consumption: nextCons };
+        }));
     };
 
     const addSize = () => {
@@ -228,11 +268,72 @@ export default function ConsumptionPage() {
                                     </th>
                                     {components.map((comp, cIdx) => (
                                         <th key={cIdx} className="bg-secondary/30 px-4 py-3 text-center text-[11px] font-black uppercase tracking-wider text-muted border-b border-r border-border min-w-[140px] group relative">
-                                            <span>{comp}</span>
-                                            <div className="text-[9px] text-muted/50 font-bold normal-case tracking-normal">kg/{unit === 'Dozen' ? 'doz' : 'pc'}</div>
+                                            {renamingCompIdx === cIdx ? (
+                                                <input
+                                                    autoFocus
+                                                    className="w-full bg-background border border-primary/50 text-center px-1 py-1 rounded outline-none text-foreground font-black uppercase"
+                                                    value={renameVal}
+                                                    onChange={e => setRenameVal(e.target.value)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') {
+                                                            renameComponent(cIdx, renameVal);
+                                                            setRenamingCompIdx(null);
+                                                        } else if (e.key === 'Escape') {
+                                                            setRenamingCompIdx(null);
+                                                        }
+                                                    }}
+                                                    onBlur={() => {
+                                                        renameComponent(cIdx, renameVal);
+                                                        setRenamingCompIdx(null);
+                                                    }}
+                                                />
+                                            ) : (
+                                                <>
+                                                    <span
+                                                        className="cursor-pointer hover:text-primary transition-colors inline-block"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setRenamingCompIdx(cIdx);
+                                                            setRenameVal(comp);
+                                                        }}
+                                                    >
+                                                        {comp}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setRenamingCompIdx(cIdx);
+                                                            setRenameVal(comp);
+                                                        }}
+                                                        className="absolute top-1.5 left-1 opacity-0 group-hover:opacity-100 p-0.5 hover:bg-primary/10 hover:text-primary rounded text-muted/40 transition-all"
+                                                        title="Rename Column"
+                                                    >
+                                                        <Edit2 className="w-2.5 h-2.5" />
+                                                    </button>
+                                                    {/* Movement Buttons */}
+                                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                                        <button
+                                                            onClick={() => moveComponent(cIdx, 'left')}
+                                                            disabled={cIdx === 0}
+                                                            className="p-0.5 bg-background border border-border rounded shadow-sm hover:text-primary disabled:opacity-30"
+                                                        >
+                                                            <ChevronDown className="w-3 h-3 rotate-90" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => moveComponent(cIdx, 'right')}
+                                                            disabled={cIdx === components.length - 1}
+                                                            className="p-0.5 bg-background border border-border rounded shadow-sm hover:text-primary disabled:opacity-30"
+                                                        >
+                                                            <ChevronDown className="w-3 h-3 -rotate-90" />
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="text-[9px] text-muted/50 font-bold normal-case tracking-normal mt-0.5">kg/{unit === 'Dozen' ? 'doz' : 'pc'}</div>
                                             <button
                                                 onClick={() => removeComponent(cIdx)}
                                                 className="absolute top-1.5 right-1 opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-100 hover:text-red-500 rounded text-muted/40 transition-all"
+                                                title="Delete Column"
                                             >
                                                 <X className="w-3 h-3" />
                                             </button>

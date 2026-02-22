@@ -8,9 +8,11 @@ import {
     Box, Activity, LayoutGrid, CheckCircle, RotateCcw,
     ChevronLeft, ChevronRight, Filter
 } from 'lucide-react';
+import LotAssignmentPreview from '@/components/previews/LotAssignmentPreview';
 
 export default function CuttingSizePage() {
     const [approvedInwards, setApprovedInwards] = useState<any[]>([]);
+    const [allApprovedInwards, setAllApprovedInwards] = useState<any[]>([]);
     const [assignments, setAssignments] = useState<any[]>([]);
     const [consumptions, setConsumptions] = useState<any[]>([]);
     const [masterProducts, setMasterProducts] = useState<{ _id: string; name: string }[]>([]);
@@ -26,6 +28,7 @@ export default function CuttingSizePage() {
     const [isBulkSaving, setIsBulkSaving] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [previewLot, setPreviewLot] = useState<any>(null);
 
 
     const fetchData = async () => {
@@ -40,12 +43,9 @@ export default function CuttingSizePage() {
             if (resInward.ok) {
                 const dataInward = await resInward.json();
                 if (Array.isArray(dataInward)) {
-                    const flattened = dataInward.flatMap(inward =>
+                    const allFlattened = dataInward.flatMap(inward =>
                         inward.items
-                            .filter((item: any) =>
-                                item.status === 'Approved' &&
-                                (item.materialId?.subType?.toLowerCase() === 'interlock' || !item.materialId?.subType)
-                            )
+                            .filter((item: any) => item.status === 'Approved')
                             .map((item: any) => ({
                                 ...item,
                                 inwardId: inward._id,
@@ -55,7 +55,16 @@ export default function CuttingSizePage() {
                                 inwardDate: inward.inwardDate
                             }))
                     );
-                    setApprovedInwards(flattened);
+
+                    const mainFabricFlattened = allFlattened.filter((item: any) => {
+                        const subType = item.materialId?.subType?.toLowerCase() || '';
+                        const name = item.materialId?.name?.toLowerCase() || '';
+                        const isRib = subType.includes('rib') || name.includes('rib');
+                        return !isRib;
+                    });
+
+                    setApprovedInwards(mainFabricFlattened);
+                    setAllApprovedInwards(allFlattened);
                 }
             }
 
@@ -109,13 +118,61 @@ export default function CuttingSizePage() {
 
         Object.keys(groups).forEach(key => {
             const usedTotal = groups[key].assignments.reduce((sum: number, a: any) => sum + (Number(a.usedWeight) || 0), 0);
+            const latestAssignmentDate = groups[key].assignments.length > 0
+                ? new Date(Math.max(...groups[key].assignments.map((a: any) => new Date(a.date).getTime())))
+                : null;
+
+            const assignedProducts = Array.from(new Set(groups[key].assignments.map((a: any) => a.productName))).join(', ');
+
+            // Rib Analysis per Color
+            const ribStats: Record<string, { available: number; required: number }> = {};
+
+            // 1. Available Rib from Inwards
+            allApprovedInwards
+                .filter(inw => (inw.lotNo === key || inw.globalLotNo === key) &&
+                    (inw.materialId?.subType?.toLowerCase()?.includes('rib') ||
+                        inw.materialId?.name?.toLowerCase()?.includes('rib')))
+                .forEach(ribItem => {
+                    const colorKey = ribItem.color?.toLowerCase().trim() || 'default';
+                    if (!ribStats[colorKey]) ribStats[colorKey] = { available: 0, required: 0 };
+                    ribStats[colorKey].available += Number(ribItem.quantity) || 0;
+                });
+
+            // 2. Required Rib from Assignments
+            groups[key].assignments.forEach((asgn: any) => {
+                const colorKey = asgn.color?.toLowerCase().trim() || 'default';
+                if (!ribStats[colorKey]) ribStats[colorKey] = { available: 0, required: 0 };
+                // ribConsumption is kg/doz
+                ribStats[colorKey].required += (Number(asgn.totalDozen) || 0) * (Number(asgn.ribConsumption) || 0);
+            });
+
+            // Split lot.items into interlock vs rib by material name
+            const isRibItem = (it: any) =>
+                it.materialId?.subType?.toLowerCase()?.includes('rib') ||
+                it.materialId?.name?.toLowerCase()?.includes('rib');
+
+            const interlockItems = groups[key].items.filter((it: any) => !isRibItem(it));
+            const ribItems = groups[key].items.filter((it: any) => isRibItem(it));
+
+            const interlockTotalPcs = interlockItems.reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
+            const interlockTotalKg = interlockItems.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0);
+            const ribTotalPcs = ribItems.reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
+            const ribTotalKg = ribItems.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0);
+
             groups[key].remainingWeight = groups[key].totalWeight - usedTotal;
+            groups[key].latestAssignmentDate = latestAssignmentDate;
+            groups[key].assignedProducts = assignedProducts;
+            groups[key].ribStats = ribStats;
+            groups[key].interlockTotalPcs = interlockTotalPcs;
+            groups[key].interlockTotalKg = interlockTotalKg;
+            groups[key].ribTotalPcs = ribTotalPcs;
+            groups[key].ribTotalKg = ribTotalKg;
             groups[key].color = Array.from(groups[key].uniqueColors).join(', ');
             groups[key].diameter = Array.from(groups[key].uniqueDiameters).join(', ');
         });
 
         return Object.values(groups);
-    }, [approvedInwards, assignments]);
+    }, [approvedInwards, allApprovedInwards, assignments]);
 
     const filteredLots = useMemo(() => {
         return lotGroups.filter(lot =>
@@ -177,13 +234,13 @@ export default function CuttingSizePage() {
             }
             return 0;
         };
-        const interlockWeight = findVal(['interlock']);
+        const interlockWeight = findVal(['interlock', 'in r/b']);
         const wastageWeight = findVal(['wastage', 'waste']);
-        const ribConsumption = findVal(['rib']);
+        const ribConsumption = findVal(['rib', 'fol r/b']);
         let bodyWeight = findVal(['body weight', 'body']);
         if (bodyWeight === 0) {
             bodyWeight = comps
-                .filter((c: any) => !['interlock', 'wastage', 'waste', 'rib'].some(kw => c.name.toLowerCase().includes(kw)))
+                .filter((c: any) => !['interlock', 'in r/b', 'wastage', 'waste', 'rib', 'fol r/b'].some(kw => c.name.toLowerCase().includes(kw)))
                 .reduce((sum: number, c: any) => sum + (Number(c.value) || 0), 0);
         }
         const divisor = bodyWeight + wastageWeight + interlockWeight;
@@ -208,6 +265,7 @@ export default function CuttingSizePage() {
             wastageWeight,
             interlockWeight,
             ribConsumption,
+            date: new Date(),
             remarks: 'Assigned via Direct Master Link'
         };
     };
@@ -500,7 +558,15 @@ export default function CuttingSizePage() {
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg font-black text-foreground">LOT: {lot.lotNo}</span>
                                                 {lot.remainingWeight < 0.1 && (
-                                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase rounded border border-emerald-500/20">Fully Assigned</span>
+                                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase rounded border border-emerald-500/20">
+                                                        Fully Assigned {lot.assignedProducts && `To ${lot.assignedProducts}`}
+                                                    </span>
+                                                )}
+                                                {lot.latestAssignmentDate && (
+                                                    <span className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/5 text-blue-600 text-[8px] font-black uppercase rounded border border-blue-500/10">
+                                                        <History className="w-2.5 h-2.5" />
+                                                        Assigned: {new Date(lot.latestAssignmentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3 mt-0.5">
@@ -533,6 +599,15 @@ export default function CuttingSizePage() {
                                         )}
 
                                         <div className="flex items-center gap-6 border-l border-border pl-6">
+                                            {lot.assignments.length > 0 && (
+                                                <button
+                                                    onClick={() => setPreviewLot(lot)}
+                                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100"
+                                                    title="View Preview / Job Card"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                            )}
                                             <div className="flex flex-col items-center">
                                                 <span className="text-[8px] font-black text-muted uppercase tracking-widest leading-none">Total</span>
                                                 <span className="text-sm font-black text-foreground mt-1">{lot.totalWeight.toFixed(1)} <span className="text-[8px] text-muted">KG</span></span>
@@ -725,7 +800,14 @@ export default function CuttingSizePage() {
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     {asgn ? (
-                                                                        <div className="text-sm font-black text-green-600 leading-none">{asgn.totalDozen} <span className="text-[8px] uppercase">Doz</span></div>
+                                                                        <div className="flex flex-col items-center">
+                                                                            <div className="text-sm font-black text-green-600 leading-none">{asgn.totalDozen} <span className="text-[8px] uppercase">Doz</span></div>
+                                                                            {asgn.date && (
+                                                                                <div className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                                                                    {new Date(asgn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                     ) : (
                                                                         <span className="text-slate-300 italic text-[10px]">Pending Assignment</span>
                                                                     )}
@@ -756,6 +838,66 @@ export default function CuttingSizePage() {
                                                 </tbody>
                                             </table>
                                         </div>
+
+                                        {/* Rib Analysis Section */}
+                                        {Object.keys(lot.ribStats || {}).length > 0 && (
+                                            <div className="p-5 bg-indigo-50/30 border-t border-indigo-100/50">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <Layers className="w-4 h-4 text-indigo-600" />
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-900">Rib (Accessory) Requirement Analysis</h4>
+                                                    <div className="ml-auto flex items-center gap-4 text-[9px] font-bold text-indigo-600/70">
+                                                        <span className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded-full" /> In Stock</span>
+                                                        <span className="flex items-center gap-1"><div className="w-2 h-2 bg-rose-500 rounded-full" /> Required</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {Object.entries(lot.ribStats).map(([color, stats]: [string, any]) => {
+                                                        const balance = stats.available - stats.required;
+                                                        const isShort = balance < -0.01;
+                                                        return (
+                                                            <div key={color} className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden group">
+                                                                <div className="relative z-10">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <span className="text-[10px] font-black uppercase text-slate-700">{color === 'default' ? 'General' : color}</span>
+                                                                        {isShort ? (
+                                                                            <span className="px-1.5 py-0.5 bg-rose-500 text-white text-[8px] font-black uppercase rounded flex items-center gap-1">
+                                                                                <AlertTriangle className="w-2.5 h-2.5" /> Shortage - Add Stock
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[8px] font-black uppercase rounded flex items-center gap-1">
+                                                                                <CheckCircle2 className="w-2.5 h-2.5" /> Excess
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-end justify-between">
+                                                                        <div className="space-y-1">
+                                                                            <div className="text-[9px] text-slate-400 font-bold flex justify-between w-32">Available: <span className="text-slate-900">{stats.available.toFixed(3)} KG</span></div>
+                                                                            <div className="text-[9px] text-slate-400 font-bold flex justify-between w-32">Required: <span className="text-slate-900 font-black">{stats.required.toFixed(3)} KG</span></div>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <div className={`text-xs font-black ${isShort ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                                                                {isShort ? '-' : '+'}{Math.abs(balance).toFixed(3)} <span className="text-[8px] uppercase">KG</span>
+                                                                            </div>
+                                                                            <div className="text-[7px] font-black uppercase text-slate-300 mt-0.5 leading-none">
+                                                                                {isShort ? 'Add Extra' : 'Surplus'}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Progress Bar */}
+                                                                <div className="absolute bottom-0 left-0 h-1 bg-slate-100 w-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full transition-all duration-500 ${isShort ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                                                        style={{ width: `${Math.min(100, (stats.available / (stats.required || 1)) * 100)}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="p-4 bg-slate-50/50 flex items-center justify-between text-[10px] font-bold text-slate-400">
                                             <div className="flex items-center gap-4">
@@ -825,6 +967,15 @@ export default function CuttingSizePage() {
                     </>
                 )}
             </div>
+
+            {/* Lot Preview Modal */}
+            {previewLot && (
+                <LotAssignmentPreview
+                    lot={previewLot}
+                    diameterMappings={diameterMappings}
+                    onClose={() => setPreviewLot(null)}
+                />
+            )}
         </div>
     );
 }

@@ -114,6 +114,7 @@ export function Sidebar() {
                 {/* Fabrics Dropdown */}
                 <div className="space-y-1">
                     <button
+                        suppressHydrationWarning
                         onClick={() => setIsFabricsManualOpen(!fabricsOpen)}
                         className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${isFabricsActive
                             ? 'bg-primary/10 text-primary translate-x-1'
@@ -150,6 +151,7 @@ export function Sidebar() {
                             {/* Inspection Sub-Dropdown */}
                             <div className="space-y-1">
                                 <button
+                                    suppressHydrationWarning
                                     onClick={() => setIsInspectionManualOpen(!inspectionOpen)}
                                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-all ${pathname.includes('/inspection')
                                         ? 'text-orange-600 bg-orange-500/5'

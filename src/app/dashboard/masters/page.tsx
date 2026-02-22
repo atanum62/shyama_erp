@@ -362,6 +362,7 @@ export default function MastersPage() {
                 </div>
                 {activeTab !== 'consumption' && activeTab !== 'diameter-mapping' && (
                     <button
+                        suppressHydrationWarning
                         onClick={() => setIsModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:opacity-90 transition-all shadow-lg shadow-primary/20"
                     >
@@ -377,6 +378,7 @@ export default function MastersPage() {
                     const Icon = tab.icon;
                     return (
                         <button
+                            suppressHydrationWarning
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all min-w-fit ${activeTab === tab.id
@@ -398,6 +400,7 @@ export default function MastersPage() {
                         <div className="relative w-full sm:w-80">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                             <input
+                                suppressHydrationWarning
                                 type="text"
                                 placeholder={`Search ${tabConfig[activeTab].label.toLowerCase()}...`}
                                 className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
