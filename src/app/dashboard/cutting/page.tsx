@@ -66,6 +66,8 @@ export default function CuttingPage() {
 
     const [availableLots, setAvailableLots] = useState<any[]>([]);
     const [rows, setRows] = useState<RowData[]>([emptyRow(1)]);
+    const [commonWastage, setCommonWastage] = useState('');
+    const [wastageUnit, setWastageUnit] = useState<'kg' | 'g'>('kg');
 
     const fetchAll = async () => {
         setLoading(true);
@@ -170,6 +172,8 @@ export default function CuttingPage() {
 
     const recalculateRows = (updatedRows: RowData[]) => {
         let currentSlipStart = 1;
+        const coeff = Number(commonWastage) || 0;
+
         const finalRows = updatedRows.map((row, idx) => {
             const doz = Number(row.doz) || 0;
             const pcs = doz * 12;
@@ -180,6 +184,15 @@ export default function CuttingPage() {
                 const end = currentSlipStart + totalSlip - 1;
                 slipNo = `${currentSlipStart}-${end}`;
                 currentSlipStart = end + 1;
+            }
+
+            // Auto-calculate wastage if common coefficient is set
+            let wastage = Number(row.wastage) || 0;
+            if (coeff > 0) {
+                wastage = doz * coeff;
+                if (wastageUnit === 'g') {
+                    wastage = wastage / 1000;
+                }
             }
 
             const prodCons = consumptions.find(c =>
@@ -203,7 +216,6 @@ export default function CuttingPage() {
             }
 
             const weight = Number(row.weight) || 0;
-            const wastage = Number(row.wastage) || 0;
             const totalRowWeight = weight + wastage + inRB + folRB;
 
             return {
@@ -211,6 +223,7 @@ export default function CuttingPage() {
                 srNo: idx + 1,
                 slipNo,
                 pcs,
+                wastage: Number(wastage.toFixed(3)),
                 inRB: Number(inRB.toFixed(3)),
                 folRB: Number(folRB.toFixed(3)),
                 totalRowWeight: Number(totalRowWeight.toFixed(3))
@@ -232,6 +245,21 @@ export default function CuttingPage() {
 
     const removeRow = (idx: number) => {
         const next = rows.filter((_, i) => i !== idx);
+        recalculateRows(next);
+    };
+
+    const applyCommonWastage = (val: string, unit: 'kg' | 'g' = wastageUnit) => {
+        // We set the state and then call recalculateRows which now uses this state
+        setCommonWastage(val);
+        setWastageUnit(unit);
+        // Recalculate will use the new commonWastage/Unit values
+        // Note: state updates are async, so we pass them dummy-style or use a temp rows list
+        const coeff = Number(val) || 0;
+        const next = rows.map(r => {
+            let w = Number(r.doz) * coeff;
+            if (unit === 'g') w = w / 1000;
+            return { ...r, wastage: Number(w.toFixed(3)) };
+        });
         recalculateRows(next);
     };
 
@@ -530,6 +558,7 @@ export default function CuttingPage() {
                                             <td className="px-2 py-3">
                                                 <input
                                                     type="number"
+                                                    step="any"
                                                     value={row.wastage || ''}
                                                     onChange={e => updateRow(idx, 'wastage', Number(e.target.value))}
                                                     className="w-full h-9 px-3 bg-background border border-border rounded-lg text-xs font-black text-center outline-none focus:ring-2 focus:ring-primary/20"
@@ -579,6 +608,46 @@ export default function CuttingPage() {
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-secondary/10 border-t border-border">
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[9px] font-black uppercase text-muted/60 tracking-wider">Common Wastage Coeff</label>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center bg-white border border-primary/20 rounded-lg overflow-hidden shadow-sm">
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            value={commonWastage}
+                                            onChange={e => applyCommonWastage(e.target.value)}
+                                            className="w-24 h-9 px-3 text-xs font-black outline-none"
+                                            placeholder="Value"
+                                        />
+                                        <div className="flex border-l border-primary/10 bg-secondary/5">
+                                            {(['kg', 'g'] as const).map((u) => (
+                                                <button
+                                                    key={u}
+                                                    onClick={() => {
+                                                        setWastageUnit(u);
+                                                        applyCommonWastage(commonWastage, u);
+                                                    }}
+                                                    className={`px-3 h-9 text-[10px] font-black uppercase transition-all ${wastageUnit === u ? 'bg-primary text-white' : 'text-muted hover:bg-secondary'}`}
+                                                >
+                                                    {u}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-primary italic ml-2">Applies (Doz × Coeff) to all rows</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={addRow}
+                            className="px-6 py-2.5 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                        >
+                            <Plus className="w-4 h-4" /> Add New Row
+                        </button>
                     </div>
                 </div>
 
