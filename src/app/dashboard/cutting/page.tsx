@@ -62,6 +62,10 @@ export default function CuttingPage() {
         totalWeight: '',
         color: '',
         remarks: '',
+        interlockWeight: '',
+        interlockRolls: '',
+        ribWeight: '',
+        ribRolls: '',
     });
 
     const [availableLots, setAvailableLots] = useState<any[]>([]);
@@ -143,6 +147,14 @@ export default function CuttingPage() {
 
                     if (!isRib && !groups[lotKey].quality && materialName) {
                         groups[lotKey].quality = materialName;
+                    }
+
+                    if (isRib) {
+                        groups[lotKey].ribWeight = (groups[lotKey].ribWeight || 0) + (Number(item.quantity) || 0);
+                        groups[lotKey].ribRolls = (groups[lotKey].ribRolls || 0) + rollCount;
+                    } else {
+                        groups[lotKey].interlockWeight = (groups[lotKey].interlockWeight || 0) + (Number(item.quantity) || 0);
+                        groups[lotKey].interlockRolls = (groups[lotKey].interlockRolls || 0) + rollCount;
                     }
                 }
             });
@@ -264,13 +276,20 @@ export default function CuttingPage() {
     };
 
     const grandTotals = rows.reduce(
-        (acc, row) => ({
-            totalDozens: acc.totalDozens + (Number(row.doz) || 0),
-            totalPieces: acc.totalPieces + (Number(row.pcs) || 0),
-            fabricUsedKg: acc.fabricUsedKg + (Number(row.totalRowWeight) || 0),
-            wastageKg: acc.wastageKg + (Number(row.wastage) || 0),
-        }),
-        { totalDozens: 0, totalPieces: 0, fabricUsedKg: 0, wastageKg: 0 }
+        (acc, row) => {
+            const rowInterlock = (Number(row.weight) || 0) + (Number(row.wastage) || 0);
+            const rowRib = (Number(row.inRB) || 0) + (Number(row.folRB) || 0);
+
+            return {
+                totalDozens: acc.totalDozens + (Number(row.doz) || 0),
+                totalPieces: acc.totalPieces + (Number(row.pcs) || 0),
+                fabricUsedKg: acc.fabricUsedKg + (Number(row.totalRowWeight) || 0),
+                wastageKg: acc.wastageKg + (Number(row.wastage) || 0),
+                interlockUsed: acc.interlockUsed + rowInterlock,
+                ribUsed: acc.ribUsed + rowRib,
+            };
+        },
+        { totalDozens: 0, totalPieces: 0, fabricUsedKg: 0, wastageKg: 0, interlockUsed: 0, ribUsed: 0 }
     );
 
     const handleSubmit = async (status: 'Draft' | 'Submitted') => {
@@ -308,6 +327,8 @@ export default function CuttingPage() {
             lotNo: '', challanNo: '',
             productName: '', gsm: '', totalRolls: '', quality: '', totalWeight: '', color: '',
             remarks: '',
+            interlockWeight: '', interlockRolls: '',
+            ribWeight: '', ribRolls: '',
         });
         setRows([emptyRow(1)]);
     };
@@ -368,7 +389,7 @@ export default function CuttingPage() {
                         <span className="w-8 h-[1px] bg-primary/30" />
                         Master Information
                     </h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-5">
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Date</label>
                             <input
@@ -397,6 +418,10 @@ export default function CuttingPage() {
                                             quality: lot.quality || '',
                                             totalWeight: String(lot.totalWeight || ''),
                                             color: lot.color || '',
+                                            interlockWeight: String(lot.interlockWeight || 0),
+                                            interlockRolls: String(lot.interlockRolls || 0),
+                                            ribWeight: String(lot.ribWeight || 0),
+                                            ribRolls: String(lot.ribRolls || 0),
                                         });
                                     } else {
                                         setForm({ ...form, lotNo: e.target.value });
@@ -419,6 +444,22 @@ export default function CuttingPage() {
                                 placeholder="Enter No."
                                 className="w-full bg-transparent outline-none font-black text-sm placeholder:text-muted/30"
                             />
+                        </div>
+
+                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                            <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Interlock Totals</label>
+                            <div className="flex items-center gap-2">
+                                <div className="text-sm font-black text-primary">{form.interlockWeight} KG</div>
+                                <div className="text-[10px] font-bold text-muted uppercase">/ {form.interlockRolls} Rolls</div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                            <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Rib Totals</label>
+                            <div className="flex items-center gap-2">
+                                <div className="text-sm font-black text-orange-600">{form.ribWeight} KG</div>
+                                <div className="text-[10px] font-bold text-muted uppercase">/ {form.ribRolls} Pcs</div>
+                            </div>
                         </div>
 
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
@@ -651,23 +692,87 @@ export default function CuttingPage() {
                     </div>
                 </div>
 
-                {/* Section 3: Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {[
-                        { label: 'Total Dozens', value: grandTotals.totalDozens, color: 'primary', suffix: '' },
-                        { label: 'Total Pieces', value: grandTotals.totalPieces, color: 'blue', suffix: '' },
-                        { label: 'Fabric Used', value: grandTotals.fabricUsedKg.toFixed(2), color: 'green', suffix: ' KG' },
-                        { label: 'Wastage', value: grandTotals.wastageKg.toFixed(2), color: 'orange', suffix: ' KG' },
-                        { label: 'Remaining', value: (Number(form.totalWeight) - grandTotals.fabricUsedKg).toFixed(2), color: 'red', suffix: ' KG' },
-                    ].map(card => (
-                        <div key={card.label} className="bg-card border border-border rounded-2xl p-5 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
-                            <div className={`absolute top-0 left-0 w-full h-1 ${card.color === 'primary' ? 'bg-primary' : card.color === 'blue' ? 'bg-blue-500' : card.color === 'green' ? 'bg-emerald-500' : card.color === 'orange' ? 'bg-orange-500' : 'bg-rose-500'}`} />
-                            <div className={`text-2xl font-black ${card.color === 'primary' ? 'text-primary' : card.color === 'blue' ? 'text-blue-500' : card.color === 'green' ? 'text-emerald-500' : card.color === 'orange' ? 'text-orange-500' : 'text-rose-500'}`}>
-                                {card.value}{card.suffix}
-                            </div>
-                            <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1.5">{card.label}</div>
+                {/* Section 3: Summary Dashboards */}
+                <div className="space-y-4">
+                    {/* Basic Stats Row */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center group hover:border-primary/50 transition-all">
+                            <div className="text-2xl font-black text-primary">{grandTotals.totalDozens}</div>
+                            <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1">Total Dozens</div>
                         </div>
-                    ))}
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center group hover:border-blue-500/50 transition-all">
+                            <div className="text-2xl font-black text-blue-500">{grandTotals.totalPieces}</div>
+                            <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1">Total Pieces</div>
+                        </div>
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center group hover:border-orange-500/50 transition-all">
+                            <div className="text-2xl font-black text-orange-500">{grandTotals.wastageKg.toFixed(2)} KG</div>
+                            <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1">Total Wastage</div>
+                        </div>
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center group hover:border-rose-500/50 transition-all">
+                            <div className="text-2xl font-black text-rose-500">{(Number(form.totalWeight) - grandTotals.fabricUsedKg).toFixed(2)} KG</div>
+                            <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1">Net Balance</div>
+                        </div>
+                    </div>
+
+                    {/* Material Reconciliation Blocks */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* 1. Interlock Block */}
+                        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col group hover:border-primary/50 transition-all">
+                            <div className="bg-primary/5 px-5 py-3 border-b border-primary/10 flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Interlock Reconciliation</span>
+                                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            </div>
+                            <div className="p-6 flex items-center justify-around">
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-foreground">{grandTotals.interlockUsed.toFixed(2)}</div>
+                                    <div className="text-[10px] font-bold text-muted uppercase mt-1">Interlock Used (KG)</div>
+                                </div>
+                                <div className="h-10 w-[1px] bg-border" />
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-primary">{(Number(form.interlockWeight) - grandTotals.interlockUsed).toFixed(2)}</div>
+                                    <div className="text-[10px] font-bold text-muted uppercase mt-1">Interlock Left (KG)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Rib Block */}
+                        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col group hover:border-orange-500/50 transition-all">
+                            <div className="bg-orange-500/5 px-5 py-3 border-b border-orange-500/10 flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-orange-600">Rib Reconciliation</span>
+                                <div className="w-2 h-2 rounded-full bg-orange-500" />
+                            </div>
+                            <div className="p-6 flex items-center justify-around">
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-foreground">{grandTotals.ribUsed.toFixed(2)}</div>
+                                    <div className="text-[10px] font-bold text-muted uppercase mt-1">Rib Used (KG)</div>
+                                </div>
+                                <div className="h-10 w-[1px] bg-border" />
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-orange-600">{(Number(form.ribWeight) - grandTotals.ribUsed).toFixed(2)}</div>
+                                    <div className="text-[10px] font-bold text-muted uppercase mt-1">Rib Left (KG)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. Total Fabric Block */}
+                        <div className="bg-card border-2 border-primary/20 rounded-2xl overflow-hidden shadow-xl flex flex-col group transition-all">
+                            <div className="bg-primary/10 px-5 py-3 border-b border-primary/20 flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Total Fabric Control</span>
+                                <Scissors className="w-3 h-3 text-primary" />
+                            </div>
+                            <div className="p-6 flex items-center justify-around bg-gradient-to-br from-transparent to-primary/5">
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-foreground">{grandTotals.fabricUsedKg.toFixed(2)}</div>
+                                    <div className="text-[10px] font-bold text-muted uppercase mt-1">Grand Total Used</div>
+                                </div>
+                                <div className="h-10 w-[1px] bg-primary/20" />
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-primary">{(Number(form.totalWeight) - grandTotals.fabricUsedKg).toFixed(2)}</div>
+                                    <div className="text-[10px] font-bold text-muted uppercase mt-1">Grand Total Left</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
