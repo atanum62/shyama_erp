@@ -58,7 +58,7 @@ export function Sidebar() {
     const menuItems = [
         { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
         { name: 'Masters', href: '/dashboard/masters', icon: Database },
-        { name: 'Cutting Orders', href: '/dashboard/cutting', icon: Scissors },
+        { name: 'Cutting Sheet', href: '/dashboard/cutting', icon: Scissors },
         { name: 'Stitching & QC', href: '/dashboard/stitching', icon: UserCircle },
         { name: 'Delivery', href: '/dashboard/delivery', icon: Truck },
         { name: 'Accounting', href: '/dashboard/accounting', icon: IndianRupee },

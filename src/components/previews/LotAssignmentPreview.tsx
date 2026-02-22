@@ -47,6 +47,18 @@ export default function LotAssignmentPreview({ lot, diameterMappings, onClose }:
         return '—';
     };
 
+    // Extract unique GSMs from interlock items
+    const uniqueGsms = Array.from(new Set(
+        (lot.items || [])
+            .filter((it: any) => {
+                const isRib = it.materialId?.name?.toLowerCase()?.includes('rib') ||
+                    it.materialId?.subType?.toLowerCase()?.includes('rib');
+                const hasGsm = it.gsm && Number(it.gsm) > 0;
+                return !isRib && hasGsm;
+            })
+            .map((it: any) => Number(it.gsm).toFixed(1))
+    )).sort();
+
     // Interlock PCS per diameter+color (rib excluded — rib is NOT cut)
     const interlockPcsByDiaColor: Record<string, number> = (lot.items || []).reduce((acc: Record<string, number>, it: any) => {
         const isRib = it.materialId?.name?.toLowerCase()?.includes('rib') ||
@@ -159,7 +171,13 @@ export default function LotAssignmentPreview({ lot, diameterMappings, onClose }:
                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                                 <Hash className="w-2.5 h-2.5 text-indigo-400" /> Lot Number
                             </span>
-                            <div className="text-sm font-black text-slate-900">{lot.lotNo}</div>
+                            <div className="text-sm font-black text-slate-900 leading-none">{lot.lotNo}</div>
+                            {uniqueGsms.length > 0 && (
+                                <div className="text-[14px] font-black text-rose-600 mt-1 flex items-center gap-1">
+                                    <span className="opacity-40 text-[9px] uppercase tracking-tighter">GSM:</span>
+                                    {uniqueGsms.join(' / ')}
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-1">
                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">

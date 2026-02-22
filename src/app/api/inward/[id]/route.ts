@@ -184,6 +184,11 @@ export async function PATCH(
                 updateData["items.$.pcs"] = Number(body.pcs);
             }
 
+            // Support gsm update if provided
+            if (body.gsm !== undefined) {
+                updateData["items.$.gsm"] = Number(body.gsm);
+            }
+
             let pushData: any = {};
             if (updateData["$push"]) {
                 pushData = updateData["$push"];

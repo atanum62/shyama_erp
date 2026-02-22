@@ -91,8 +91,15 @@ export default function CuttingSizePage() {
     const lotGroups = useMemo(() => {
         const groups: Record<string, any> = {};
 
-        approvedInwards.forEach(item => {
+        allApprovedInwards.forEach(item => {
             const lotKey = item.lotNo || item.globalLotNo || 'NO-LOT';
+
+            const isRibItem = (it: any) =>
+                it.materialId?.subType?.toLowerCase()?.includes('rib') ||
+                it.materialId?.name?.toLowerCase()?.includes('rib');
+
+            const isRib = isRibItem(item);
+
             if (!groups[lotKey]) {
                 groups[lotKey] = {
                     lotNo: lotKey,
@@ -101,7 +108,7 @@ export default function CuttingSizePage() {
                     items: [],
                     assignments: assignments.filter(a => a.lotNo === lotKey),
                     partyName: item.partyName,
-                    materialName: item.materialId?.name || 'Fabric',
+                    materialName: isRib ? 'Fabric' : (item.materialId?.name || 'Fabric'),
                     color: item.color,
                     inwardDate: item.inwardDate,
                     challanNo: item.challanNo,
@@ -109,11 +116,20 @@ export default function CuttingSizePage() {
                     uniqueDiameters: new Set()
                 };
             }
+
+            // Prioritize main fabric name over Rib for the header
+            if (groups[lotKey].materialName === 'Fabric' && !isRib) {
+                groups[lotKey].materialName = item.materialId?.name || 'Fabric';
+            }
+
             groups[lotKey].totalWeight += Number(item.quantity) || 0;
             groups[lotKey].totalPcs += Number(item.pcs) || 0;
             groups[lotKey].items.push(item);
-            groups[lotKey].uniqueColors.add(item.color);
-            groups[lotKey].uniqueDiameters.add(item.diameter);
+
+            if (!isRib) {
+                groups[lotKey].uniqueColors.add(item.color);
+                groups[lotKey].uniqueDiameters.add(item.diameter);
+            }
         });
 
         Object.keys(groups).forEach(key => {
@@ -159,7 +175,13 @@ export default function CuttingSizePage() {
             const ribTotalPcs = ribItems.reduce((s: number, it: any) => s + (Number(it.pcs) || 0), 0);
             const ribTotalKg = ribItems.reduce((s: number, it: any) => s + (Number(it.quantity) || 0), 0);
 
-            groups[key].remainingWeight = groups[key].totalWeight - usedTotal;
+            const uniqueGsms = Array.from(new Set(
+                interlockItems
+                    .filter((it: any) => it.gsm && Number(it.gsm) > 0)
+                    .map((it: any) => Number(it.gsm).toFixed(1))
+            )).sort();
+
+            groups[key].remainingWeight = interlockTotalKg - usedTotal;
             groups[key].latestAssignmentDate = latestAssignmentDate;
             groups[key].assignedProducts = assignedProducts;
             groups[key].ribStats = ribStats;
@@ -169,6 +191,7 @@ export default function CuttingSizePage() {
             groups[key].ribTotalKg = ribTotalKg;
             groups[key].color = Array.from(groups[key].uniqueColors).join(', ');
             groups[key].diameter = Array.from(groups[key].uniqueDiameters).join(', ');
+            groups[key].uniqueGsms = uniqueGsms;
         });
 
         return Object.values(groups);
@@ -573,6 +596,12 @@ export default function CuttingSizePage() {
                                                 <span className="text-[10px] font-bold text-muted uppercase tracking-tight truncate max-w-[150px]">{lot.partyName}</span>
                                                 <div className="w-1 h-1 rounded-full bg-border" />
                                                 <span className="text-[10px] font-bold text-muted uppercase tracking-tight">{lot.color}</span>
+                                                {lot.uniqueGsms && lot.uniqueGsms.length > 0 && (
+                                                    <>
+                                                        <div className="w-1 h-1 rounded-full bg-border" />
+                                                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-tight">GSM: {lot.uniqueGsms.join(' / ')}</span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -647,7 +676,11 @@ export default function CuttingSizePage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-50">
-                                                    {lot.items.map((item: any, i: number) => {
+                                                    {lot.items.filter((it: any) => {
+                                                        const name = it.materialId?.name?.toLowerCase() || '';
+                                                        const sub = it.materialId?.subType?.toLowerCase() || '';
+                                                        return !name.includes('rib') && !sub.includes('rib');
+                                                    }).map((item: any, i: number) => {
                                                         const asgn = lot.assignments.find((a: any) => a.itemId === item._id);
                                                         const draft = draftSelections[item._id] || { productName: asgn?.productName || '', size: asgn?.productSize || '' };
 

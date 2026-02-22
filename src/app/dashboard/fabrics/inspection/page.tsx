@@ -39,6 +39,7 @@ import {
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { ReweightModal } from '@/components/fabric/ReweightModal';
+import { GsmInputModal } from '@/components/fabric/GsmInputModal';
 
 export default function FabricInspectionPage() {
     const [inwards, setInwards] = useState<any[]>([]);
@@ -63,6 +64,14 @@ export default function FabricInspectionPage() {
 
     // Multi-select State
     const [selectedColors, setSelectedColors] = useState<Record<string, string[]>>({});
+
+    // GSM Modal State
+    const [isGsmModalOpen, setIsGsmModalOpen] = useState(false);
+    const [gsmTarget, setGsmTarget] = useState<{
+        inwardId: string;
+        itemIds: string[];
+        isIndividual?: boolean;
+    } | null>(null);
 
     // Full Inward Report State
     const [viewingFullInward, setViewingFullInward] = useState<any | null>(null);
@@ -189,12 +198,12 @@ export default function FabricInspectionPage() {
         }
     };
 
-    const handleUpdateStatus = async (id: string, itemId: string, status: string, rejectionCause?: string) => {
+    const handleUpdateStatus = async (id: string, itemId: string, status: string, rejectionCause?: string, gsm?: number) => {
         try {
             const res = await fetch(`/api/inward/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status, rejectionCause, itemId })
+                body: JSON.stringify({ status, rejectionCause, itemId, gsm })
             });
             if (res.ok) {
                 fetchData();
@@ -236,7 +245,7 @@ export default function FabricInspectionPage() {
         }
     };
 
-    const handleBulkStatusUpdate = async (inwardId: string, itemIds: string[], status: string) => {
+    const handleBulkStatusUpdate = async (inwardId: string, itemIds: string[], status: string, gsm?: number) => {
         if (!itemIds.length) return;
 
         try {
@@ -247,7 +256,7 @@ export default function FabricInspectionPage() {
             // Prepare the updated items array
             const updatedItems = inward.items.map((item: any) => {
                 if (itemIds.includes(item._id)) {
-                    return { ...item, status, rejectionCause: '' };
+                    return { ...item, status, rejectionCause: '', gsm: gsm || item.gsm };
                 }
                 return item;
             });
@@ -267,6 +276,25 @@ export default function FabricInspectionPage() {
         } catch (err) {
             console.error('Bulk update failed:', err);
         }
+    };
+
+    const initiateApproval = (id: string, itemIds: string | string[], isIndividual = false) => {
+        const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
+        setGsmTarget({ inwardId: id, itemIds: ids, isIndividual });
+        setIsGsmModalOpen(true);
+    };
+
+    const handleConfirmApprove = async (gsm: number) => {
+        if (!gsmTarget) return;
+
+        if (gsmTarget.isIndividual) {
+            await handleUpdateStatus(gsmTarget.inwardId, gsmTarget.itemIds[0], 'Approved', '', gsm);
+        } else {
+            await handleBulkStatusUpdate(gsmTarget.inwardId, gsmTarget.itemIds, 'Approved', gsm);
+        }
+
+        setIsGsmModalOpen(false);
+        setGsmTarget(null);
     };
 
     const openRejectionModal = (id: string, ids: string | string[]) => {
@@ -392,6 +420,7 @@ export default function FabricInspectionPage() {
                 <div className="flex items-center gap-1.5 p-1 bg-secondary/50 rounded-xl border border-border/50 shrink-0">
                     {['7D', '1M', '3M', '6M', '1Y'].map((p) => (
                         <button
+                            suppressHydrationWarning
                             key={p}
                             onClick={() => setTimePeriod(p)}
                             className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${timePeriod === p ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted hover:bg-secondary hover:text-foreground'}`}
@@ -461,6 +490,7 @@ export default function FabricInspectionPage() {
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black text-muted uppercase tracking-widest whitespace-nowrap">Rows:</span>
                             <select
+                                suppressHydrationWarning
                                 value={rowsPerPage}
                                 onChange={(e) => setRowsPerPage(Number(e.target.value))}
                                 className="bg-card border border-border rounded-lg text-xs font-black p-1 focus:outline-none"
@@ -472,6 +502,7 @@ export default function FabricInspectionPage() {
                         <div className="flex items-center gap-2 bg-secondary/30 px-3 py-1.5 rounded-xl border border-border">
                             <Filter className="w-3.5 h-3.5 text-muted" />
                             <select
+                                suppressHydrationWarning
                                 value={selectedParty}
                                 onChange={(e) => setSelectedParty(e.target.value)}
                                 className="bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-4"
@@ -486,6 +517,7 @@ export default function FabricInspectionPage() {
                         <div className="relative w-full max-w-md">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                             <input
+                                suppressHydrationWarning
                                 type="text"
                                 placeholder="Search challan or party..."
                                 value={searchTerm}
@@ -501,6 +533,7 @@ export default function FabricInspectionPage() {
                                 </span>
                                 <div className="flex items-center gap-1">
                                     <button
+                                        suppressHydrationWarning
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                         disabled={currentPage === 1}
                                         className="p-1.5 border border-border rounded-lg bg-card hover:bg-secondary disabled:opacity-50 transition-all"
@@ -508,6 +541,7 @@ export default function FabricInspectionPage() {
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
                                     <button
+                                        suppressHydrationWarning
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                         disabled={currentPage === totalPages}
                                         className="p-1.5 border border-border rounded-lg bg-card hover:bg-secondary disabled:opacity-50 transition-all"
@@ -547,6 +581,7 @@ export default function FabricInspectionPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <button
+                                                    suppressHydrationWarning
                                                     onClick={() => setExpandedLots(prev => ({ ...prev, [inward._id]: !prev[inward._id] }))}
                                                     className={`p-1 rounded-lg transition-all ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-white border border-border text-muted hover:text-primary'}`}
                                                 >
@@ -600,12 +635,12 @@ export default function FabricInspectionPage() {
                                                 {selectedColors[inward._id]?.length > 1 && (
                                                     <div className="flex gap-2">
                                                         <button
-                                                            onClick={async () => {
+                                                            onClick={() => {
                                                                 const colorsToApprove = selectedColors[inward._id];
                                                                 const itemsToApprove = inward.items
                                                                     .filter((item: any) => colorsToApprove.includes(item.color) && item.status === 'Pending')
                                                                     .map((item: any) => item._id);
-                                                                await handleBulkStatusUpdate(inward._id, itemsToApprove, 'Approved');
+                                                                initiateApproval(inward._id, itemsToApprove);
                                                             }}
                                                             className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 transition-transform active:scale-95"
                                                         >
@@ -634,11 +669,11 @@ export default function FabricInspectionPage() {
                                                 {inward.items.some((item: any) => item.status === 'Pending') && (
                                                     <div className="flex gap-2">
                                                         <button
-                                                            onClick={async () => {
+                                                            onClick={() => {
                                                                 const pendingIds = inward.items
                                                                     .filter((item: any) => item.status === 'Pending')
                                                                     .map((item: any) => item._id);
-                                                                await handleBulkStatusUpdate(inward._id, pendingIds, 'Approved');
+                                                                initiateApproval(inward._id, pendingIds);
                                                             }}
                                                             className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md transition-all active:scale-95"
                                                         >
@@ -728,7 +763,7 @@ export default function FabricInspectionPage() {
                                                                                         const pendingIds = group.items
                                                                                             .filter((item: any) => item.status === 'Pending')
                                                                                             .map((item: any) => item._id);
-                                                                                        handleBulkStatusUpdate(inward._id, pendingIds, 'Approved');
+                                                                                        initiateApproval(inward._id, pendingIds);
                                                                                     }}
                                                                                     className="group/btn p-1.5 flex items-center gap-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
                                                                                     title="Approve All Color"
@@ -778,6 +813,12 @@ export default function FabricInspectionPage() {
                                                                                     <span className="text-[11px] font-black text-primary">{item.quantity} KG</span>
                                                                                     <span className="w-1 h-1 rounded-full bg-gray-300" />
                                                                                     <span className="text-[11px] font-black text-blue-600">{item.pcs} PCS</span>
+                                                                                    {item.gsm > 0 && (
+                                                                                        <>
+                                                                                            <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                                            <span className="text-[11px] font-black text-orange-600 uppercase">{item.gsm} GSM</span>
+                                                                                        </>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
 
@@ -791,7 +832,7 @@ export default function FabricInspectionPage() {
 
                                                                                 <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                                                                     {item.status !== 'Approved' && (
-                                                                                        <button onClick={() => handleUpdateStatus(inward._id, item._id, 'Approved')} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Approve">
+                                                                                        <button onClick={() => initiateApproval(inward._id, item._id, true)} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Approve">
                                                                                             <CheckCircle className="w-3.5 h-3.5" />
                                                                                         </button>
                                                                                     )}
@@ -840,6 +881,17 @@ export default function FabricInspectionPage() {
                         </tbody>
                     </table>
                 </div>
+
+                <GsmInputModal
+                    isOpen={isGsmModalOpen}
+                    onClose={() => {
+                        setIsGsmModalOpen(false);
+                        setGsmTarget(null);
+                    }}
+                    onConfirm={handleConfirmApprove}
+                    title={gsmTarget?.isIndividual ? "Confirm GSM for Item" : "Confirm GSM for Entire Lot"}
+                />
+
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
                     <div className="px-6 py-4 border-t border-border bg-secondary/10 flex items-center justify-between">

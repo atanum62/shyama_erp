@@ -2,19 +2,16 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ICuttingSheetRow {
     srNo: number;
-    color: string;
-    materialName: string;
-    lotNo?: string;
-    // Size-wise dozens
-    s75?: number; s80?: number; s85?: number; s90?: number; s95?: number;
-    s100?: number; s105?: number; s110?: number;
-    // Totals (calculated)
-    totalDozens: number;
-    totalPieces: number;
-    // Fabric usage
-    fabricUsedKg?: number;
-    wastageKg?: number;
-    rippedKg?: number;
+    slipNo: string;         // e.g., "1-10", "11-20"
+    totalSlip: number;      // Manual entry
+    size: string;           // Manual dropdown from Master
+    doz: number;            // Manual entry
+    pcs: number;            // Auto: doz * 12
+    weight: number;         // Manual entry
+    wastage: number;        // Manual entry
+    inRB: number;           // Auto from consumption
+    folRB: number;          // Auto from consumption
+    totalRowWeight: number; // Auto: weight + wastage + inRB + folRB
     remarks?: string;
 }
 
@@ -23,14 +20,16 @@ export interface ICuttingSheet extends Document {
     date: Date;               // Single date for the whole sheet (entered once)
 
     // Header info
-    partyId: Types.ObjectId;  // Dyeing House / Party
-    clientId: Types.ObjectId; // LUX / Rupa
     lotNo?: string;
-    inwardChallanNo?: string;
+    challanNo?: string;       // Renamed from inwardChallanNo
 
-    // Product info
+    // Product & Technical info
     productName: string;      // e.g., "Vest", "T-Shirt"
-    style?: string;
+    gsm?: string;             // Added
+    totalRolls?: number;      // Renamed from pcs
+    quality?: string;         // Added
+    totalWeight?: number;     // Added
+    color?: string;           // Added (Total Passed Color)
 
     // Rows
     rows: ICuttingSheetRow[];
@@ -50,22 +49,16 @@ export interface ICuttingSheet extends Document {
 
 const RowSchema = new Schema({
     srNo: { type: Number },
-    color: { type: String, required: true },
-    materialName: { type: String, default: '' },
-    lotNo: { type: String },
-    s75: { type: Number, default: 0 },
-    s80: { type: Number, default: 0 },
-    s85: { type: Number, default: 0 },
-    s90: { type: Number, default: 0 },
-    s95: { type: Number, default: 0 },
-    s100: { type: Number, default: 0 },
-    s105: { type: Number, default: 0 },
-    s110: { type: Number, default: 0 },
-    totalDozens: { type: Number, default: 0 },
-    totalPieces: { type: Number, default: 0 },
-    fabricUsedKg: { type: Number, default: 0 },
-    wastageKg: { type: Number, default: 0 },
-    rippedKg: { type: Number, default: 0 },
+    slipNo: { type: String },
+    totalSlip: { type: Number, default: 0 },
+    size: { type: String },
+    doz: { type: Number, default: 0 },
+    pcs: { type: Number, default: 0 },
+    weight: { type: Number, default: 0 },
+    wastage: { type: Number, default: 0 },
+    inRB: { type: Number, default: 0 },
+    folRB: { type: Number, default: 0 },
+    totalRowWeight: { type: Number, default: 0 },
     remarks: { type: String },
 }, { _id: false });
 
@@ -74,13 +67,15 @@ const CuttingSheetSchema: Schema = new Schema(
         sheetNo: { type: String, required: true, unique: true, index: true },
         date: { type: Date, required: true, default: Date.now },
 
-        partyId: { type: Schema.Types.ObjectId, ref: 'Party' },
-        clientId: { type: Schema.Types.ObjectId, ref: 'Party' },
         lotNo: { type: String },
-        inwardChallanNo: { type: String },
+        challanNo: { type: String },
 
         productName: { type: String, required: true, default: '' },
-        style: { type: String },
+        gsm: { type: String },
+        totalRolls: { type: Number },
+        quality: { type: String },
+        totalWeight: { type: Number },
+        color: { type: String },
 
         rows: [RowSchema],
 
