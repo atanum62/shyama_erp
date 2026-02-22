@@ -24,20 +24,22 @@ import {
 
 export function Sidebar() {
     const pathname = usePathname();
-    const [isFabricsOpen, setIsFabricsOpen] = useState(false);
-    const [isInspectionOpen, setIsInspectionOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    const isFabricsOpen = mounted && pathname.startsWith('/dashboard/fabrics');
+    const isInspectionOpen = mounted && pathname.includes('/dashboard/fabrics/inspection');
+
+    const [isFabricsManualOpen, setIsFabricsManualOpen] = useState(false);
+    const [isInspectionManualOpen, setIsInspectionManualOpen] = useState(false);
+
+    const fabricsOpen = isFabricsOpen || isFabricsManualOpen;
+    const inspectionOpen = isInspectionOpen || isInspectionManualOpen;
 
     const [displayName, setDisplayName] = useState('SHYAMA ERP');
 
-    // Auto-expand based on current route
     useEffect(() => {
-        if (pathname.includes('/dashboard/fabrics')) {
-            setIsFabricsOpen(true);
-            if (pathname.includes('/dashboard/fabrics/inspection')) {
-                setIsInspectionOpen(true);
-            }
-        }
-    }, [pathname]);
+        setMounted(true);
+    }, []);
 
     // Fetch branding only once on mount
     useEffect(() => {
@@ -112,7 +114,7 @@ export function Sidebar() {
                 {/* Fabrics Dropdown */}
                 <div className="space-y-1">
                     <button
-                        onClick={() => setIsFabricsOpen(!isFabricsOpen)}
+                        onClick={() => setIsFabricsManualOpen(!fabricsOpen)}
                         className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${isFabricsActive
                             ? 'bg-primary/10 text-primary translate-x-1'
                             : 'text-muted hover:bg-secondary hover:text-foreground hover:translate-x-0.5'
@@ -122,10 +124,10 @@ export function Sidebar() {
                             <Package className={`w-4 h-4 ${isFabricsActive ? 'text-primary' : 'text-primary/70'}`} />
                             Fabrics
                         </div>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isFabricsOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${fabricsOpen ? 'rotate-180' : ''}`} />
                     </button>
 
-                    {isFabricsOpen && (
+                    {fabricsOpen && (
                         <div className="ml-4 pl-4 border-l border-primary/20 space-y-1 mt-1 animate-in slide-in-from-top-2 duration-300">
                             {fabricsSubMenu.map((sub) => {
                                 const Icon = sub.icon;
@@ -148,7 +150,7 @@ export function Sidebar() {
                             {/* Inspection Sub-Dropdown */}
                             <div className="space-y-1">
                                 <button
-                                    onClick={() => setIsInspectionOpen(!isInspectionOpen)}
+                                    onClick={() => setIsInspectionManualOpen(!inspectionOpen)}
                                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-all ${pathname.includes('/inspection')
                                         ? 'text-orange-600 bg-orange-500/5'
                                         : 'text-muted hover:text-foreground hover:bg-secondary/50'
@@ -158,10 +160,10 @@ export function Sidebar() {
                                         <Search className="w-3.5 h-3.5" />
                                         Inspection
                                     </div>
-                                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${isInspectionOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${inspectionOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
-                                {isInspectionOpen && (
+                                {inspectionOpen && (
                                     <div className="ml-3 pl-3 border-l border-orange-500/20 space-y-1 mt-1 animate-in slide-in-from-top-1">
                                         {inspectionSubMenu.map((sub) => {
                                             const Icon = sub.icon;

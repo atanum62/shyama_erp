@@ -18,6 +18,7 @@ export default function ConsumptionPage() {
     const [consumptions, setConsumptions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
+    const [products, setProducts] = useState<{ _id: string; name: string }[]>([]);
 
     // Form state
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function ConsumptionPage() {
     const [newSizeVal, setNewSizeVal] = useState('');
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => { fetchConsumptions(); }, []);
+    useEffect(() => { fetchConsumptions(); fetchProducts(); }, []);
 
     const fetchConsumptions = async () => {
         setLoading(true);
@@ -37,6 +38,13 @@ export default function ConsumptionPage() {
             const res = await fetch('/api/consumption');
             if (res.ok) setConsumptions(await res.json());
         } finally { setLoading(false); }
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const res = await fetch('/api/masters/products');
+            if (res.ok) setProducts(await res.json());
+        } catch { /* silent */ }
     };
 
     const openNew = () => {
@@ -151,13 +159,19 @@ export default function ConsumptionPage() {
                 <div className="bg-card border border-border rounded-2xl p-5 flex flex-wrap gap-6 items-end shadow-sm">
                     <div className="space-y-1.5 flex-1 min-w-[200px]">
                         <label className="text-[11px] font-black uppercase tracking-wider text-muted/70">Product Name</label>
-                        <input
-                            autoFocus
+                        <select
                             value={productName}
                             onChange={e => setProductName(e.target.value)}
-                            placeholder="e.g. T-Shirt, Pant..."
-                            className="w-full h-10 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg transition-all"
-                        />
+                            className="w-full h-10 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-base transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">— Select a Product —</option>
+                            {products.map(p => (
+                                <option key={p._id} value={p.name}>{p.name}</option>
+                            ))}
+                        </select>
+                        {products.length === 0 && (
+                            <p className="text-[10px] text-orange-500 font-bold">⚠ No products found. Add products in Masters → Products first.</p>
+                        )}
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-wider text-muted/70">Consumption Per</label>

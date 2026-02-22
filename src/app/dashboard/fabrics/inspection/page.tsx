@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Plus,
     Search,
@@ -25,6 +25,15 @@ import {
     ClipboardList,
     ArrowUp,
     ArrowDown,
+    TrendingUp,
+    TrendingDown,
+    Package,
+    Activity,
+    Calendar,
+    BarChart2,
+    ChevronLeft,
+    ChevronRight,
+    ChevronDown,
     ArrowUpRight
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -33,8 +42,11 @@ import { ReweightModal } from '@/components/fabric/ReweightModal';
 
 export default function FabricInspectionPage() {
     const [inwards, setInwards] = useState<any[]>([]);
+    const [parties, setParties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedParty, setSelectedParty] = useState('All');
+    const [expandedLots, setExpandedLots] = useState<{ [key: string]: boolean }>({});
 
     // Rejection Modal State
     const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
@@ -61,6 +73,71 @@ export default function FabricInspectionPage() {
     const [isReweightModalOpen, setIsReweightModalOpen] = useState(false);
     const [reweightItem, setReweightItem] = useState<any>(null);
     const [viewingReweightHistory, setViewingReweightHistory] = useState<any | null>(null);
+    const [timePeriod, setTimePeriod] = useState('1M');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    // Dashboard Analytics Logic
+    const dashboardStats = useMemo(() => {
+        if (!inwards.length) return null;
+
+        // Pending Lots: unique inwards that have at least one pending item
+        const pendingLots = inwards.filter(inv => inv.items?.some((it: any) => it.status === 'Pending'));
+        const pendingLotsCount = pendingLots.length;
+
+        // Total Pending Weight
+        const totalPendingWeight = inwards.reduce((acc, inv) => {
+            const lotPendingWeight = inv.items?.filter((it: any) => it.status === 'Pending')
+                .reduce((a: number, c: any) => a + (Number(c.quantity) || 0), 0) || 0;
+            return acc + lotPendingWeight;
+        }, 0);
+
+        // Period filter logic
+        const now = new Date();
+        let daysToLookBack = 30;
+        if (timePeriod === '7D') daysToLookBack = 7;
+        else if (timePeriod === '3M') daysToLookBack = 90;
+        else if (timePeriod === '6M') daysToLookBack = 180;
+        else if (timePeriod === '1Y') daysToLookBack = 365;
+
+        const startDate = new Date();
+        startDate.setDate(now.getDate() - daysToLookBack);
+
+        const periodInwards = inwards.filter(inv => new Date(inv.inwardDate) >= startDate);
+
+        // Approved Lots: Fully processed and all items approved
+        const approvedLotsCount = periodInwards.filter(inv =>
+            inv.items?.length > 0 && inv.items.every((it: any) => it.status === 'Approved')
+        ).length;
+
+        // Rejected Color Batches: Unique color groupings in lots that have rejected items
+        let rejectedColorBatchesCount = 0;
+        periodInwards.forEach(inv => {
+            const colorGroups = inv.items?.reduce((acc: any, it: any) => {
+                const color = it.color || 'Unknown';
+                if (!acc[color]) acc[color] = [];
+                acc[color].push(it);
+                return acc;
+            }, {});
+
+            if (colorGroups) {
+                Object.values(colorGroups).forEach((items: any) => {
+                    // If any item in the color group is rejected, we count it as a rejected color batch
+                    if (items.some((it: any) => it.status === 'Rejected')) {
+                        rejectedColorBatchesCount++;
+                    }
+                });
+            }
+        });
+
+        return {
+            pendingLotsCount,
+            totalPendingWeight: totalPendingWeight.toFixed(1),
+            approvedLotsCount,
+            rejectedColorBatchesCount,
+            totalProcessedLots: periodInwards.length
+        };
+    }, [inwards, timePeriod]);
 
     const toggleColorSelection = (inwardId: string, color: string) => {
         setSelectedColors(prev => {
@@ -78,16 +155,19 @@ export default function FabricInspectionPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [inRes, sRes] = await Promise.all([
+            const [inRes, sRes, pRes] = await Promise.all([
                 fetch('/api/inward'),
-                fetch('/api/system/settings')
+                fetch('/api/system/settings'),
+                fetch('/api/masters/parties')
             ]);
-            const [inData, sData] = await Promise.all([
+            const [inData, sData, pData] = await Promise.all([
                 inRes.json(),
-                sRes.json()
+                sRes.json(),
+                pRes.json()
             ]);
             setInwards(Array.isArray(inData) ? inData : []);
             setSystemSettings(sData);
+            setParties(Array.isArray(pData) ? pData.filter((p: any) => p.type === 'DyeingHouse' || p.type === 'Dyeing House') : []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -271,36 +351,172 @@ export default function FabricInspectionPage() {
         }
     };
 
-    const filteredInwards = inwards.filter(inward => {
+    const filteredInwards = useMemo(() => {
         const query = searchTerm.toLowerCase();
-        return (
-            inward.lotNo?.toLowerCase().includes(query) ||
-            inward.challanNo?.toLowerCase().includes(query) ||
-            inward.partyId?.name?.toLowerCase().includes(query) ||
-            inward.items.some((item: any) =>
-                item.color?.toLowerCase().includes(query) ||
-                item.materialId?.name?.toLowerCase().includes(query)
-            )
-        );
-    });
+        return inwards.filter(inward => {
+            // Robust party ID check
+            const inwardPartyId = inward.partyId?._id || inward.partyId;
+            const matchesParty = selectedParty === 'All' || inwardPartyId === selectedParty;
+
+            const matchesSearch = (
+                inward.lotNo?.toLowerCase().includes(query) ||
+                inward.challanNo?.toLowerCase().includes(query) ||
+                (typeof inward.partyId === 'object' && inward.partyId?.name?.toLowerCase().includes(query)) ||
+                inward.items.some((item: any) =>
+                    item.color?.toLowerCase().includes(query) ||
+                    item.materialId?.name?.toLowerCase().includes(query)
+                )
+            );
+            return matchesSearch && matchesParty;
+        });
+    }, [inwards, searchTerm, selectedParty]);
+
+    const paginatedInwards = useMemo(() => {
+        const start = (currentPage - 1) * rowsPerPage;
+        return filteredInwards.slice(start, start + rowsPerPage);
+    }, [filteredInwards, currentPage, rowsPerPage]);
+
+    const totalPages = Math.ceil(filteredInwards.length / rowsPerPage);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, rowsPerPage]);
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">Fabric Inspection Overview</h1>
-                    <p className="text-muted text-sm">Review quality control and approve/reject received fabric batches.</p>
+                    <p className="text-muted text-sm font-medium">Review quality control and approve/reject received fabric batches.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                        <input
-                            type="text"
-                            placeholder="Search challan or party..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 w-64"
-                        />
+                <div className="flex items-center gap-1.5 p-1 bg-secondary/50 rounded-xl border border-border/50 shrink-0">
+                    {['7D', '1M', '3M', '6M', '1Y'].map((p) => (
+                        <button
+                            key={p}
+                            onClick={() => setTimePeriod(p)}
+                            className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${timePeriod === p ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted hover:bg-secondary hover:text-foreground'}`}
+                        >
+                            {p}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Inspection Analytics Grid */}
+            {dashboardStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                    {/* Pending Lots */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                            <div className="text-[10px] font-bold text-amber-600 bg-amber-500/5 px-2 py-0.5 rounded-full uppercase">Waiting</div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingLotsCount} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Pending Inspection</p>
+                    </div>
+
+                    {/* Pending Weight */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-blue-500/10 text-blue-600 rounded-xl">
+                                <Package className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalPendingWeight} <span className="text-[10px] text-muted font-bold">KG</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Pending Volume</p>
+                    </div>
+
+                    {/* Approved Lots in Period */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
+                                <CheckCircle2 className="w-5 h-5" />
+                            </div>
+                            <div className="text-[10px] font-bold text-emerald-600 bg-emerald-500/5 px-2 py-0.5 rounded-full uppercase">Full Pass</div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.approvedLotsCount} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Approved Lots ({timePeriod})</p>
+                    </div>
+
+                    {/* Rejected Color Batches */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-red-500/10 text-red-600 rounded-xl">
+                                <Activity className="w-5 h-5" />
+                            </div>
+                            <div className="text-[10px] font-bold text-red-600 bg-red-500/5 px-2 py-0.5 rounded-full uppercase">QC Failed</div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.rejectedColorBatchesCount} <span className="text-[10px] text-muted font-bold">Batches</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Rejected Color Batches ({timePeriod})</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Controls Bar: Rows, Filter, Search */}
+            <div className="bg-card p-4 rounded-2xl border border-border shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-muted uppercase tracking-widest whitespace-nowrap">Rows:</span>
+                            <select
+                                value={rowsPerPage}
+                                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                                className="bg-card border border-border rounded-lg text-xs font-black p-1 focus:outline-none"
+                            >
+                                {[10, 25, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-secondary/30 px-3 py-1.5 rounded-xl border border-border">
+                            <Filter className="w-3.5 h-3.5 text-muted" />
+                            <select
+                                value={selectedParty}
+                                onChange={(e) => setSelectedParty(e.target.value)}
+                                className="bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-4"
+                            >
+                                <option value="All">All Dyeing Houses</option>
+                                {parties.map(p => <option key={p._id} value={p._id || p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex items-center justify-end gap-6">
+                        <div className="relative w-full max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                            <input
+                                type="text"
+                                placeholder="Search challan or party..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-secondary/20 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+
+                        {totalPages > 1 && (
+                            <div className="hidden lg:flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] font-black text-muted uppercase tracking-widest mr-2 leading-none whitespace-nowrap">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        disabled={currentPage === 1}
+                                        className="p-1.5 border border-border rounded-lg bg-card hover:bg-secondary disabled:opacity-50 transition-all"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="p-1.5 border border-border rounded-lg bg-card hover:bg-secondary disabled:opacity-50 transition-all"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -325,11 +541,19 @@ export default function FabricInspectionPage() {
                                     <AlertCircle className="w-12 h-12 text-muted mx-auto mb-4" />
                                     <p className="text-muted">No entries found matching your search.</p>
                                 </td></tr>
-                            ) : filteredInwards.map((inward) => (
+                            ) : paginatedInwards.map((inward) => (
                                 <React.Fragment key={inward._id}>
                                     <tr className="bg-secondary/5 group border-t-8 border-white first:border-0 hover:bg-secondary/10 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="font-black text-foreground text-sm tracking-tight">{inward.lotNo || '-'}</div>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => setExpandedLots(prev => ({ ...prev, [inward._id]: !prev[inward._id] }))}
+                                                    className={`p-1 rounded-lg transition-all ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-white border border-border text-muted hover:text-primary'}`}
+                                                >
+                                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expandedLots[inward._id] ? '' : '-rotate-90'}`} />
+                                                </button>
+                                                <div className="font-black text-foreground text-sm tracking-tight">{inward.lotNo || '-'}</div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -436,173 +660,175 @@ export default function FabricInspectionPage() {
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr className="bg-white/40 border-b border-gray-100">
-                                        <td colSpan={5} className="px-6 py-6 pt-2">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
-                                                {Object.entries(
-                                                    inward.items.reduce((acc: any, item: any) => {
-                                                        const color = item.color || 'Unknown';
-                                                        if (!acc[color]) acc[color] = { color, items: [], totalQty: 0, totalPcs: 0 };
-                                                        acc[color].items.push(item);
-                                                        acc[color].totalQty += Number(item.quantity) || 0;
-                                                        acc[color].totalPcs += Number(item.pcs) || 0;
-                                                        return acc;
-                                                    }, {})
-                                                ).sort().map(([colorName, group]: [string, any]) => {
-                                                    const isSelected = (selectedColors[inward._id] || []).includes(colorName);
-                                                    return (
-                                                        <div
-                                                            key={colorName}
-                                                            onClick={(e) => {
-                                                                // Prevent interaction with buttons, but allow selection by clicking the card
-                                                                if ((e.target as HTMLElement).closest('button')) return;
-                                                                toggleColorSelection(inward._id, colorName);
-                                                            }}
-                                                            className={`bg-white border-2 border-l-[6px] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-gray-100 hover:border-primary/20'
-                                                                }`}
-                                                            style={{ borderLeftColor: colorName.toLowerCase() }}
-                                                        >
-                                                            {/* Selection Pulse Indicator */}
-                                                            {isSelected && (
-                                                                <div className="absolute top-2 right-2 z-10">
-                                                                    <div className="bg-blue-600 text-white p-1 rounded-full shadow-lg">
-                                                                        <CheckCircle className="w-3 h-3" />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {/* Card Header with Batch Actions */}
-                                                            <div className="p-4 border-b border-gray-50 bg-gray-50/40 flex items-center justify-between">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-4 h-4 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: colorName.toLowerCase() }} />
-                                                                    <div>
-                                                                        <div className="text-[12px] font-black text-gray-900 uppercase leading-none">{colorName}</div>
-                                                                        <div className="flex items-center gap-2 mt-1">
-                                                                            <div className="text-[9px] font-bold text-primary">{group.totalQty.toFixed(2)} KG</div>
-                                                                            <div className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                            <div className="text-[9px] font-bold text-blue-600">{group.totalPcs} PCS</div>
+                                    {expandedLots[inward._id] && (
+                                        <tr className="bg-white/40 border-b border-gray-100">
+                                            <td colSpan={5} className="px-6 py-6 pt-2">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                                                    {Object.entries(
+                                                        inward.items.reduce((acc: any, item: any) => {
+                                                            const color = item.color || 'Unknown';
+                                                            if (!acc[color]) acc[color] = { color, items: [], totalQty: 0, totalPcs: 0 };
+                                                            acc[color].items.push(item);
+                                                            acc[color].totalQty += Number(item.quantity) || 0;
+                                                            acc[color].totalPcs += Number(item.pcs) || 0;
+                                                            return acc;
+                                                        }, {})
+                                                    ).sort().map(([colorName, group]: [string, any]) => {
+                                                        const isSelected = (selectedColors[inward._id] || []).includes(colorName);
+                                                        return (
+                                                            <div
+                                                                key={colorName}
+                                                                onClick={(e) => {
+                                                                    // Prevent interaction with buttons, but allow selection by clicking the card
+                                                                    if ((e.target as HTMLElement).closest('button')) return;
+                                                                    toggleColorSelection(inward._id, colorName);
+                                                                }}
+                                                                className={`bg-white border-2 border-l-[6px] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-gray-100 hover:border-primary/20'
+                                                                    }`}
+                                                                style={{ borderLeftColor: colorName.toLowerCase() }}
+                                                            >
+                                                                {/* Selection Pulse Indicator */}
+                                                                {isSelected && (
+                                                                    <div className="absolute top-2 right-2 z-10">
+                                                                        <div className="bg-blue-600 text-white p-1 rounded-full shadow-lg">
+                                                                            <CheckCircle className="w-3 h-3" />
                                                                         </div>
                                                                     </div>
-                                                                </div>
-                                                                <div className="flex gap-1.5">
-                                                                    <button
-                                                                        onClick={() => setViewingSpecificColor({
-                                                                            inwardId: inward._id,
-                                                                            lotNo: inward.lotNo,
-                                                                            color: colorName,
-                                                                            items: group.items
-                                                                        })}
-                                                                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
-                                                                        title="Big View"
-                                                                    >
-                                                                        <Maximize2 className="w-3.5 h-3.5" />
-                                                                    </button>
-                                                                    {group.items.some((item: any) => item.status === 'Pending') && (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const pendingIds = group.items
-                                                                                        .filter((item: any) => item.status === 'Pending')
-                                                                                        .map((item: any) => item._id);
-                                                                                    handleBulkStatusUpdate(inward._id, pendingIds, 'Approved');
-                                                                                }}
-                                                                                className="group/btn p-1.5 flex items-center gap-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
-                                                                                title="Approve All Color"
-                                                                            >
-                                                                                <CheckCircle className="w-4 h-4" />
-                                                                                <span className="max-w-0 overflow-hidden group-hover/btn:max-w-[80px] transition-all duration-300 text-[8px] font-black whitespace-nowrap">ALL ENTRIES</span>
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const pendingIds = group.items
-                                                                                        .filter((item: any) => item.status === 'Pending')
-                                                                                        .map((item: any) => item._id);
-                                                                                    if (pendingIds.length > 0) openRejectionModal(inward._id, pendingIds);
-                                                                                }}
-                                                                                className="group/btn p-1.5 flex items-center gap-1 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
-                                                                                title="Reject All Color"
-                                                                            >
-                                                                                <XCircle className="w-4 h-4" />
-                                                                                <span className="max-w-0 overflow-hidden group-hover/btn:max-w-[80px] transition-all duration-300 text-[8px] font-black whitespace-nowrap">ALL ENTRIES</span>
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                    {group.items.some((item: any) => item.status !== 'Pending') && (
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const allIds = group.items.map((item: any) => item._id);
-                                                                                handleBulkStatusUpdate(inward._id, allIds, 'Pending');
-                                                                            }}
-                                                                            className="group/btn p-1.5 flex items-center gap-1 bg-gray-50 text-gray-600 hover:bg-gray-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
-                                                                            title="Reset All to Pending"
-                                                                        >
-                                                                            <RotateCcw className="w-4 h-4" />
-                                                                            <span className="max-w-0 overflow-hidden group-hover/btn:max-w-[80px] transition-all duration-300 text-[8px] font-black whitespace-nowrap">RESET ALL</span>
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="p-3 space-y-2 max-h-[220px] overflow-y-auto no-scrollbar">
-                                                                {group.items.map((item: any, i: number) => (
-                                                                    <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-white border border-transparent hover:border-gray-200 transition-all group/item">
+                                                                )}
+                                                                {/* Card Header with Batch Actions */}
+                                                                <div className="p-4 border-b border-gray-50 bg-gray-50/40 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-4 h-4 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: colorName.toLowerCase() }} />
                                                                         <div>
-                                                                            <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.materialId?.name || 'Fabric'}</div>
-                                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                                <span className="text-[11px] font-black text-gray-800">{item.diameter}" DIA</span>
-                                                                                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                                <span className="text-[11px] font-black text-primary">{item.quantity} KG</span>
-                                                                                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                                <span className="text-[11px] font-black text-blue-600">{item.pcs} PCS</span>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div className="flex items-center gap-2">
-                                                                            <div className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest ${item.status === 'Approved' ? 'bg-emerald-500 text-white' :
-                                                                                item.status === 'Rejected' ? 'bg-red-500 text-white' :
-                                                                                    'bg-amber-500 text-white shadow-sm shadow-amber-200 animate-pulse'
-                                                                                }`}>
-                                                                                {item.status}
-                                                                            </div>
-
-                                                                            <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                                                                {item.status !== 'Approved' && (
-                                                                                    <button onClick={() => handleUpdateStatus(inward._id, item._id, 'Approved')} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Approve">
-                                                                                        <CheckCircle className="w-3.5 h-3.5" />
-                                                                                    </button>
-                                                                                )}
-                                                                                {item.status === 'Rejected' && item.rejectionCause === 'Weight' && (
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            setReweightItem({ ...item, inwardId: inward._id, challanNo: inward.challanNo });
-                                                                                            setIsReweightModalOpen(true);
-                                                                                        }}
-                                                                                        className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
-                                                                                        title="Reweight"
-                                                                                    >
-                                                                                        <Scale className="w-3.5 h-3.5" />
-                                                                                    </button>
-                                                                                )}
-                                                                                {item.status !== 'Rejected' && (
-                                                                                    <button onClick={() => openRejectionModal(inward._id, item._id)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Reject">
-                                                                                        <XCircle className="w-3.5 h-3.5" />
-                                                                                    </button>
-                                                                                )}
-                                                                                {item.status !== 'Pending' && (
-                                                                                    <button onClick={() => handleUpdateStatus(inward._id, item._id, 'Pending')} className="p-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-600 hover:text-white transition-all" title="Reset to Pending">
-                                                                                        <RotateCcw className="w-3.5 h-3.5" />
-                                                                                    </button>
-                                                                                )}
+                                                                            <div className="text-[12px] font-black text-gray-900 uppercase leading-none">{colorName}</div>
+                                                                            <div className="flex items-center gap-2 mt-1">
+                                                                                <div className="text-[9px] font-bold text-primary">{group.totalQty.toFixed(2)} KG</div>
+                                                                                <div className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                                <div className="text-[9px] font-bold text-blue-600">{group.totalPcs} PCS</div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                ))}
+                                                                    <div className="flex gap-1.5">
+                                                                        <button
+                                                                            onClick={() => setViewingSpecificColor({
+                                                                                inwardId: inward._id,
+                                                                                lotNo: inward.lotNo,
+                                                                                color: colorName,
+                                                                                items: group.items
+                                                                            })}
+                                                                            className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
+                                                                            title="Big View"
+                                                                        >
+                                                                            <Maximize2 className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                        {group.items.some((item: any) => item.status === 'Pending') && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const pendingIds = group.items
+                                                                                            .filter((item: any) => item.status === 'Pending')
+                                                                                            .map((item: any) => item._id);
+                                                                                        handleBulkStatusUpdate(inward._id, pendingIds, 'Approved');
+                                                                                    }}
+                                                                                    className="group/btn p-1.5 flex items-center gap-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
+                                                                                    title="Approve All Color"
+                                                                                >
+                                                                                    <CheckCircle className="w-4 h-4" />
+                                                                                    <span className="max-w-0 overflow-hidden group-hover/btn:max-w-[80px] transition-all duration-300 text-[8px] font-black whitespace-nowrap">ALL ENTRIES</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const pendingIds = group.items
+                                                                                            .filter((item: any) => item.status === 'Pending')
+                                                                                            .map((item: any) => item._id);
+                                                                                        if (pendingIds.length > 0) openRejectionModal(inward._id, pendingIds);
+                                                                                    }}
+                                                                                    className="group/btn p-1.5 flex items-center gap-1 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
+                                                                                    title="Reject All Color"
+                                                                                >
+                                                                                    <XCircle className="w-4 h-4" />
+                                                                                    <span className="max-w-0 overflow-hidden group-hover/btn:max-w-[80px] transition-all duration-300 text-[8px] font-black whitespace-nowrap">ALL ENTRIES</span>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {group.items.some((item: any) => item.status !== 'Pending') && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const allIds = group.items.map((item: any) => item._id);
+                                                                                    handleBulkStatusUpdate(inward._id, allIds, 'Pending');
+                                                                                }}
+                                                                                className="group/btn p-1.5 flex items-center gap-1 bg-gray-50 text-gray-600 hover:bg-gray-600 hover:text-white rounded-lg transition-all shadow-sm active:scale-90"
+                                                                                title="Reset All to Pending"
+                                                                            >
+                                                                                <RotateCcw className="w-4 h-4" />
+                                                                                <span className="max-w-0 overflow-hidden group-hover/btn:max-w-[80px] transition-all duration-300 text-[8px] font-black whitespace-nowrap">RESET ALL</span>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="p-3 space-y-2 max-h-[220px] overflow-y-auto no-scrollbar">
+                                                                    {group.items.map((item: any, i: number) => (
+                                                                        <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-white border border-transparent hover:border-gray-200 transition-all group/item">
+                                                                            <div>
+                                                                                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.materialId?.name || 'Fabric'}</div>
+                                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                                    <span className="text-[11px] font-black text-gray-800">{item.diameter}" DIA</span>
+                                                                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                                    <span className="text-[11px] font-black text-primary">{item.quantity} KG</span>
+                                                                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                                    <span className="text-[11px] font-black text-blue-600">{item.pcs} PCS</span>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest ${item.status === 'Approved' ? 'bg-emerald-500 text-white' :
+                                                                                    item.status === 'Rejected' ? 'bg-red-500 text-white' :
+                                                                                        'bg-amber-500 text-white shadow-sm shadow-amber-200 animate-pulse'
+                                                                                    }`}>
+                                                                                    {item.status}
+                                                                                </div>
+
+                                                                                <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                                                                    {item.status !== 'Approved' && (
+                                                                                        <button onClick={() => handleUpdateStatus(inward._id, item._id, 'Approved')} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Approve">
+                                                                                            <CheckCircle className="w-3.5 h-3.5" />
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {item.status === 'Rejected' && item.rejectionCause === 'Weight' && (
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                setReweightItem({ ...item, inwardId: inward._id, challanNo: inward.challanNo });
+                                                                                                setIsReweightModalOpen(true);
+                                                                                            }}
+                                                                                            className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
+                                                                                            title="Reweight"
+                                                                                        >
+                                                                                            <Scale className="w-3.5 h-3.5" />
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {item.status !== 'Rejected' && (
+                                                                                        <button onClick={() => openRejectionModal(inward._id, item._id)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Reject">
+                                                                                            <XCircle className="w-3.5 h-3.5" />
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {item.status !== 'Pending' && (
+                                                                                        <button onClick={() => handleUpdateStatus(inward._id, item._id, 'Pending')} className="p-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-600 hover:text-white transition-all" title="Reset to Pending">
+                                                                                            <RotateCcw className="w-3.5 h-3.5" />
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                    </tr>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
                                     {/* Lot Separator Row */}
                                     <tr>
                                         <td colSpan={5} className="p-0">
@@ -614,6 +840,59 @@ export default function FabricInspectionPage() {
                         </tbody>
                     </table>
                 </div>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-border bg-secondary/10 flex items-center justify-between">
+                        <div className="text-[10px] font-black text-muted uppercase tracking-widest leading-none">
+                            Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredInwards.length)} of {filteredInwards.length} lots
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 border border-border rounded-xl bg-card hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <div className="flex items-center gap-1.5">
+                                {[...Array(totalPages)].map((_, i) => {
+                                    const pageNum = i + 1;
+                                    if (
+                                        pageNum === 1 ||
+                                        pageNum === totalPages ||
+                                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                                    ) {
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => setCurrentPage(pageNum)}
+                                                className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-primary text-white shadow-lg shadow-primary/20 translate-y-[-2px]' : 'bg-card border border-border text-muted hover:bg-secondary active:scale-95'}`}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    } else if (
+                                        pageNum === 2 ||
+                                        pageNum === totalPages - 1
+                                    ) {
+                                        return <span key={pageNum} className="text-muted text-[10px] font-black mx-0.5">...</span>;
+                                    }
+                                    return null;
+                                }).filter(Boolean).reduce((acc: any[], curr: any, idx, arr) => {
+                                    if (curr.type === 'span' && arr[idx - 1]?.type === 'span') return acc;
+                                    return [...acc, curr];
+                                }, [])}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 border border-border rounded-xl bg-card hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Rejection Cause Modal */}

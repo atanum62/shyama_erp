@@ -18,7 +18,11 @@ import {
     CloudUpload,
     Loader2,
     Eye,
-    Edit3
+    Edit3,
+    ChevronDown,
+    Activity,
+    Clock,
+    Package
 } from 'lucide-react';
 import { ReweightModal } from '@/components/fabric/ReweightModal';
 import { BulkReweightModal } from '@/components/fabric/BulkReweightModal';
@@ -28,8 +32,10 @@ import { Download, FileText, LayoutList, ClipboardList } from 'lucide-react';
 
 export default function FabricReweightPage() {
     const [inwards, setInwards] = useState<any[]>([]);
+    const [parties, setParties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedParty, setSelectedParty] = useState('All');
 
     // Reweight Modal State
     const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -61,13 +67,22 @@ export default function FabricReweightPage() {
     // Lot History State
     const [viewingLotHistory, setViewingLotHistory] = useState<any | null>(null);
     const [isDownloadingHistory, setIsDownloadingHistory] = useState(false);
+    const [expandedLots, setExpandedLots] = useState<{ [key: string]: boolean }>({});
+    const [timePeriod, setTimePeriod] = useState('1M');
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/inward');
-            const data = await res.json();
-            setInwards(Array.isArray(data) ? data : []);
+            const [inRes, pRes] = await Promise.all([
+                fetch('/api/inward'),
+                fetch('/api/masters/parties')
+            ]);
+            const [inData, pData] = await Promise.all([
+                inRes.json(),
+                pRes.json()
+            ]);
+            setInwards(Array.isArray(inData) ? inData : []);
+            setParties(Array.isArray(pData) ? pData.filter((p: any) => p.type === 'DyeingHouse' || p.type === 'Dyeing House') : []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -106,15 +121,68 @@ export default function FabricReweightPage() {
         )
     );
 
+    const dashboardStats = React.useMemo(() => {
+        if (!inwards.length) return null;
+
+        // Pending Discrepancy Count
+        const pendingLotsCount = reweightInwards.length;
+        const totalPendingWeight = reweightInwards.reduce((acc, inv) => {
+            return acc + inv.items
+                .filter((it: any) => it.status === 'Rejected' && it.rejectionCause === 'Weight')
+                .reduce((a: number, c: any) => a + (Number(c.quantity) || 0), 0);
+        }, 0);
+
+        // Correction Stats (History)
+        const now = new Date();
+        let daysToLookBack = 30;
+        if (timePeriod === '7D') daysToLookBack = 7;
+        else if (timePeriod === '3M') daysToLookBack = 90;
+        else if (timePeriod === '6M') daysToLookBack = 180;
+        else if (timePeriod === '1Y') daysToLookBack = 365;
+
+        const startDate = new Date();
+        startDate.setDate(now.getDate() - daysToLookBack);
+
+        const periodHistory = historyInwards.filter(inv => {
+            const reweightLogs = inv.items.flatMap((it: any) => it.history || []).filter((h: any) => h.action === 'Reweighted');
+            return reweightLogs.some((h: any) => new Date(h.timestamp) >= startDate);
+        });
+
+        let totalWeightCorrected = 0;
+        let correctionCount = 0;
+
+        periodHistory.forEach(inv => {
+            inv.items.forEach((it: any) => {
+                const logs = it.history?.filter((h: any) => h.action === 'Reweighted' && new Date(h.timestamp) >= startDate) || [];
+                logs.forEach((h: any) => {
+                    totalWeightCorrected += Math.abs((Number(h.newWeight) || 0) - (Number(h.oldWeight) || 0));
+                    correctionCount++;
+                });
+            });
+        });
+
+        return {
+            pendingLotsCount,
+            totalPendingWeight: totalPendingWeight.toFixed(1),
+            correctedLotsCount: periodHistory.length,
+            totalWeightCorrected: totalWeightCorrected.toFixed(1),
+            correctionCount
+        };
+    }, [inwards, reweightInwards, historyInwards, timePeriod]);
+
     const activeInwards = activeTab === 'pending' ? reweightInwards : historyInwards;
 
     const filteredInwards = activeInwards.filter(inward => {
         const query = searchTerm.toLowerCase();
-        return (
+        const matchesSearch = (
             inward.lotNo?.toLowerCase().includes(query) ||
             inward.challanNo?.toLowerCase().includes(query) ||
             inward.partyId?.name?.toLowerCase().includes(query)
         );
+        const matchesParty = selectedParty === 'All' ||
+            (typeof inward.partyId === 'object' ? inward.partyId?._id === selectedParty : inward.partyId === selectedParty);
+
+        return matchesSearch && matchesParty;
     });
 
     const downloadLotHistoryPDF = async (lotData: any) => {
@@ -231,6 +299,46 @@ export default function FabricReweightPage() {
         }
     };
 
+    const pushLotToDatabase = async (inwardId: string) => {
+        const keys = Object.keys(sessionUpdates).filter(k => k.startsWith(`${inwardId}-`));
+        if (keys.length === 0) return;
+
+        setIsPushing(true);
+        try {
+            for (const key of keys) {
+                const updates = sessionUpdates[key];
+                for (const up of updates) {
+                    await fetch(`/api/inward/${up.inwardId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            status: 'Pending',
+                            rejectionCause: '',
+                            itemId: up.itemId,
+                            quantity: up.newWeight,
+                            isReweightAction: true,
+                            reweightedBy: up.reweightedBy
+                        })
+                    });
+                }
+            }
+
+            // Success - remove from session
+            setSessionUpdates(prev => {
+                const newState = { ...prev };
+                keys.forEach(k => delete newState[k]);
+                return newState;
+            });
+
+            fetchData();
+        } catch (err) {
+            console.error('Push failed:', err);
+            alert('Failing to sync data with server. Please try again.');
+        } finally {
+            setIsPushing(false);
+        }
+    };
+
     const openBulkModal = (inwardId: string, items: any[]) => {
         const mappedItems = items.map((it: any) => {
             const sessionKey = `${inwardId}-${it.color}`;
@@ -285,6 +393,9 @@ export default function FabricReweightPage() {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+                @media print {
+                    .pdf-only { display: flex !important; }
+                }
             `}</style>
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -295,7 +406,19 @@ export default function FabricReweightPage() {
                     </h1>
                     <p className="text-muted text-[10px] font-bold uppercase tracking-widest leading-none mt-1">Weight Verification Portal</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 p-1 bg-secondary/50 rounded-xl border border-border/50 shrink-0">
+                        {['7D', '1M', '3M', '6M', '1Y'].map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => setTimePeriod(p)}
+                                className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${timePeriod === p ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted hover:bg-secondary hover:text-foreground'}`}
+                            >
+                                {p}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="h-8 w-px bg-border/50" />
                     {Object.keys(sessionUpdates).length > 0 && (
                         <button
                             onClick={pushAll}
@@ -306,15 +429,89 @@ export default function FabricReweightPage() {
                             Push All ({Object.values(sessionUpdates).flat().length} Items)
                         </button>
                     )}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                        <input
-                            type="text"
-                            placeholder="Search by Lot or Challan..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 w-64"
-                        />
+                </div>
+            </div>
+
+            {/* Reweight Analytics Grid */}
+            {dashboardStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                    {/* Pending Reweights */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                            <div className="text-[10px] font-bold text-amber-600 bg-amber-500/5 px-2 py-0.5 rounded-full uppercase">Pending</div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingLotsCount} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Waiting Evaluation</p>
+                    </div>
+
+                    {/* Total Discrepancy Weight */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-blue-500/10 text-blue-600 rounded-xl">
+                                <Package className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalPendingWeight} <span className="text-[10px] text-muted font-bold">KG</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Rejected Weight</p>
+                    </div>
+
+                    {/* Corrected Lots */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
+                                <CheckCircle2 className="w-5 h-5" />
+                            </div>
+                            <div className="text-[10px] font-bold text-emerald-600 bg-emerald-500/5 px-2 py-0.5 rounded-full uppercase">Synced</div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.correctedLotsCount} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Corrections ({timePeriod})</p>
+                    </div>
+
+                    {/* Weight Corrected */}
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm group hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-xl">
+                                <Activity className="w-5 h-5" />
+                            </div>
+                            <div className="text-[10px] font-bold text-indigo-600 bg-indigo-500/5 px-2 py-0.5 rounded-full uppercase">Net Shift</div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalWeightCorrected} <span className="text-[10px] text-muted font-bold">KG</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Variance Fixed</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Controls Bar */}
+            <div className="bg-card p-4 rounded-2xl border border-border shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 bg-secondary/30 px-3 py-1.5 rounded-xl border border-border">
+                        <Filter className="w-3.5 h-3.5 text-muted" />
+                        <select
+                            value={selectedParty}
+                            onChange={(e) => setSelectedParty(e.target.value)}
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest focus:outline-none cursor-pointer pr-4"
+                        >
+                            <option value="All">All Dyeing Houses</option>
+                            {parties.map(p => (
+                                <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex-1 flex items-center justify-end">
+                        <div className="relative w-full max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                            <input
+                                type="text"
+                                placeholder="Search by Lot or Challan..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-secondary/20 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -363,8 +560,18 @@ export default function FabricReweightPage() {
                                 <React.Fragment key={inward._id}>
                                     <tr className="bg-secondary/5 group border-t-8 border-white first:border-0 hover:bg-secondary/10 transition-colors">
                                         <td className="px-6 py-6">
-                                            <div className="text-lg font-black text-foreground tracking-tighter">#{inward.lotNo || 'N/A'}</div>
-                                            <div className="text-[10px] font-bold text-muted bg-secondary px-2 py-0.5 rounded w-fit mt-1 uppercase leading-none">Source Batch</div>
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    onClick={() => setExpandedLots(prev => ({ ...prev, [inward._id]: !prev[inward._id] }))}
+                                                    className={`p-2 rounded-xl transition-all shadow-sm ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-white border border-border text-muted hover:text-primary hover:border-primary/20'}`}
+                                                >
+                                                    <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${expandedLots[inward._id] ? '' : '-rotate-90'}`} />
+                                                </button>
+                                                <div>
+                                                    <div className="text-lg font-black text-foreground tracking-tighter">#{inward.lotNo || 'N/A'}</div>
+                                                    <div className="text-[10px] font-bold text-muted bg-secondary px-2 py-0.5 rounded w-fit mt-1 uppercase leading-none">Source Batch</div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-6 font-black text-sm">{inward.partyId?.name || 'Unknown'}</td>
                                         <td className="px-6 py-6 text-xs font-bold text-primary">CHALLAN: {inward.challanNo}</td>
@@ -372,6 +579,25 @@ export default function FabricReweightPage() {
                                             <div className="flex justify-end gap-3">
                                                 {activeTab === 'pending' ? (
                                                     <>
+                                                        {(() => {
+                                                            const lotUpdatesCount = Object.keys(sessionUpdates)
+                                                                .filter(k => k.startsWith(`${inward._id}-`))
+                                                                .reduce((acc, k) => acc + sessionUpdates[k].length, 0);
+
+                                                            if (lotUpdatesCount > 0) {
+                                                                return (
+                                                                    <button
+                                                                        onClick={() => pushLotToDatabase(inward._id)}
+                                                                        disabled={isPushing}
+                                                                        className="px-4 py-2 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-200 flex items-center gap-2 hover:bg-orange-600 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                                                                    >
+                                                                        {isPushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
+                                                                        Push All Batch ({lotUpdatesCount})
+                                                                    </button>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                         {selectedColors[inward._id]?.length > 0 && (
                                                             <button
                                                                 onClick={() => {
@@ -415,162 +641,164 @@ export default function FabricReweightPage() {
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr className="bg-white/40">
-                                        <td colSpan={4} className="px-6 py-8">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {Object.entries(
-                                                    inward.items
-                                                        .filter((it: any) => activeTab === 'pending' ? (it.status === 'Rejected' && it.rejectionCause === 'Weight') : it.history?.some((h: any) => h.action === 'Reweighted'))
-                                                        .reduce((acc: any, item: any) => {
-                                                            const color = item.color || 'Unknown';
-                                                            if (!acc[color]) acc[color] = { color, items: [], totalQty: 0, totalPcs: 0 };
-                                                            acc[color].items.push(item);
-                                                            acc[color].totalQty += Number(item.quantity) || 0;
-                                                            acc[color].totalPcs += Number(item.pcs) || 0;
-                                                            return acc;
-                                                        }, {})
-                                                ).sort().map(([colorName, group]: [string, any]) => {
-                                                    const isSelected = (selectedColors[inward._id] || []).includes(colorName);
-                                                    const sessionKey = `${inward._id}-${colorName}`;
-                                                    const pendingSessionCount = sessionUpdates[sessionKey]?.length || 0;
+                                    {expandedLots[inward._id] && (
+                                        <tr className="bg-white/40">
+                                            <td colSpan={4} className="px-6 py-8">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {Object.entries(
+                                                        inward.items
+                                                            .filter((it: any) => activeTab === 'pending' ? (it.status === 'Rejected' && it.rejectionCause === 'Weight') : it.history?.some((h: any) => h.action === 'Reweighted'))
+                                                            .reduce((acc: any, item: any) => {
+                                                                const color = item.color || 'Unknown';
+                                                                if (!acc[color]) acc[color] = { color, items: [], totalQty: 0, totalPcs: 0 };
+                                                                acc[color].items.push(item);
+                                                                acc[color].totalQty += Number(item.quantity) || 0;
+                                                                acc[color].totalPcs += Number(item.pcs) || 0;
+                                                                return acc;
+                                                            }, {})
+                                                    ).sort().map(([colorName, group]: [string, any]) => {
+                                                        const isSelected = (selectedColors[inward._id] || []).includes(colorName);
+                                                        const sessionKey = `${inward._id}-${colorName}`;
+                                                        const pendingSessionCount = sessionUpdates[sessionKey]?.length || 0;
 
-                                                    return (
-                                                        <div
-                                                            key={colorName}
-                                                            onClick={(e) => {
-                                                                if (activeTab === 'pending' && (e.target as HTMLElement).closest('button')) return;
-                                                                if (activeTab === 'pending') toggleColorSelection(inward._id, colorName);
-                                                            }}
-                                                            className={`bg-white border-2 border-l-[6px] rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected && activeTab === 'pending' ? 'border-primary ring-4 ring-primary/10' : 'border-gray-50 hover:border-primary/20'
-                                                                }`}
-                                                            style={{ borderLeftColor: colorName.toLowerCase() }}
-                                                        >
-                                                            {isSelected && activeTab === 'pending' && (
-                                                                <div className="absolute top-2 right-2 z-10">
-                                                                    <div className="bg-primary text-white p-1 rounded-full shadow-lg">
-                                                                        <CheckCircle className="w-3 h-3" />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            <div className="p-4 border-b border-gray-50 bg-gray-50/40 flex items-center justify-between">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-5 h-5 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: colorName.toLowerCase() }} />
-                                                                    <div>
-                                                                        <div className="text-[11px] font-black text-gray-900 uppercase leading-none">{colorName}</div>
-                                                                        <div className="text-[9px] font-bold text-muted mt-1">{group.items.length} VARIETIES</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex gap-2">
-                                                                    {pendingSessionCount > 0 && (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={() => pushToDatabase(sessionKey)}
-                                                                                disabled={isPushing}
-                                                                                className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1 hover:bg-orange-600 transition-all shadow-md shadow-orange-100"
-                                                                                title="Push to Database"
-                                                                            >
-                                                                                {isPushing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CloudUpload className="w-3 h-3" />}
-                                                                                Push ({pendingSessionCount})
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => discardSessionValues(sessionKey)}
-                                                                                className="p-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
-                                                                                title="Discard Local Changes"
-                                                                            >
-                                                                                <RotateCcw className="w-3.5 h-3.5" />
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-
-                                                                    <button
-                                                                        onClick={() => setViewingSpecificColor({
-                                                                            inwardId: inward._id,
-                                                                            lotNo: inward.lotNo,
-                                                                            color: colorName,
-                                                                            items: group.items
-                                                                        })}
-                                                                        className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
-                                                                        title="View Analysis"
-                                                                    >
-                                                                        <Eye className="w-3 h-3" />
-                                                                        View {activeTab === 'pending' && pendingSessionCount > 0 ? 'Proposed' : 'Report'}
-                                                                    </button>
-
-                                                                    {activeTab === 'pending' && (
-                                                                        <button
-                                                                            onClick={() => openBulkModal(inward._id, group.items)}
-                                                                            className="px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
-                                                                            title="Edit Group"
-                                                                        >
-                                                                            <Edit3 className="w-3 h-3" />
-                                                                            Edit
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="p-4 space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar">
-                                                                {group.items.map((item: any, i: number) => {
-                                                                    const sessionUpd = sessionUpdates[sessionKey]?.find(u => u.itemId === item._id);
-                                                                    return (
-                                                                        <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all group/item ${sessionUpd ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 hover:bg-white border-transparent hover:border-gray-100'}`}>
-                                                                            <div className="flex items-center justify-between">
-                                                                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{item.materialId?.name || 'Fabric'}</div>
-                                                                                {sessionUpd ? (
-                                                                                    <div className="text-[8px] font-black text-orange-600 bg-white border border-orange-200 px-2 py-0.5 rounded italic flex items-center gap-1">
-                                                                                        <CheckCircle2 className="w-2.5 h-2.5" /> READY TO PUSH
-                                                                                    </div>
-                                                                                ) : activeTab === 'pending' ? (
-                                                                                    <div className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded italic">REJECTED</div>
-                                                                                ) : (
-                                                                                    item.history?.filter((h: any) => h.action === 'Reweighted').map((h: any, idx: number) => (
-                                                                                        <div key={idx} className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded italic">
-                                                                                            Reweighted to {h.newWeight} KG on {new Date(h.timestamp).toLocaleDateString()}
-                                                                                        </div>
-                                                                                    ))
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="flex items-center justify-between">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <span className="text-xs font-black text-gray-800">{item.diameter}" DIA</span>
-                                                                                    <span className="text-xs font-bold text-gray-300">|</span>
-                                                                                    <span className="text-xs font-black text-blue-600">{item.pcs} PCS</span>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-3">
-                                                                                    {sessionUpd ? (
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <span className="text-[10px] font-bold text-muted line-through">{item.quantity}</span>
-                                                                                            <ArrowRight className="w-3 h-3 text-orange-400" />
-                                                                                            <span className="text-sm font-black text-orange-600">{sessionUpd.newWeight} KG</span>
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <span className={`${activeTab === 'pending' ? 'text-sm font-black text-red-600 line-through opacity-40' : 'text-sm font-black text-foreground'}`}>{item.quantity} KG</span>
-                                                                                    )}
-
-                                                                                    {activeTab === 'pending' && (
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                setSelectedItem({ ...item, inwardId: inward._id, challanNo: inward.challanNo });
-                                                                                                setIsModalOpen(true);
-                                                                                            }}
-                                                                                            className={`p-1.5 rounded-lg shadow-md transition-all ${sessionUpd ? 'bg-orange-500 text-white' : 'bg-primary text-white shadow-primary/10 hover:scale-105 active:scale-95'}`}
-                                                                                        >
-                                                                                            <Scale className="w-3.5 h-3.5" />
-                                                                                        </button>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
+                                                        return (
+                                                            <div
+                                                                key={colorName}
+                                                                onClick={(e) => {
+                                                                    if (activeTab === 'pending' && (e.target as HTMLElement).closest('button')) return;
+                                                                    if (activeTab === 'pending') toggleColorSelection(inward._id, colorName);
+                                                                }}
+                                                                className={`bg-white border-2 border-l-[6px] rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected && activeTab === 'pending' ? 'border-primary ring-4 ring-primary/10' : 'border-gray-50 hover:border-primary/20'
+                                                                    }`}
+                                                                style={{ borderLeftColor: colorName.toLowerCase() }}
+                                                            >
+                                                                {isSelected && activeTab === 'pending' && (
+                                                                    <div className="absolute top-2 right-2 z-10">
+                                                                        <div className="bg-primary text-white p-1 rounded-full shadow-lg">
+                                                                            <CheckCircle className="w-3 h-3" />
                                                                         </div>
-                                                                    );
-                                                                })}
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="p-4 border-b border-gray-50 bg-gray-50/40 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-5 h-5 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: colorName.toLowerCase() }} />
+                                                                        <div>
+                                                                            <div className="text-[11px] font-black text-gray-900 uppercase leading-none">{colorName}</div>
+                                                                            <div className="text-[9px] font-bold text-muted mt-1">{group.items.length} VARIETIES</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        {pendingSessionCount > 0 && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() => pushToDatabase(sessionKey)}
+                                                                                    disabled={isPushing}
+                                                                                    className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1 hover:bg-orange-600 transition-all shadow-md shadow-orange-100"
+                                                                                    title="Push to Database"
+                                                                                >
+                                                                                    {isPushing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CloudUpload className="w-3 h-3" />}
+                                                                                    Push ({pendingSessionCount})
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => discardSessionValues(sessionKey)}
+                                                                                    className="p-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                                                                                    title="Discard Local Changes"
+                                                                                >
+                                                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+
+                                                                        <button
+                                                                            onClick={() => setViewingSpecificColor({
+                                                                                inwardId: inward._id,
+                                                                                lotNo: inward.lotNo,
+                                                                                color: colorName,
+                                                                                items: group.items
+                                                                            })}
+                                                                            className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                                                                            title="View Analysis"
+                                                                        >
+                                                                            <Eye className="w-3 h-3" />
+                                                                            View {activeTab === 'pending' && pendingSessionCount > 0 ? 'Proposed' : 'Report'}
+                                                                        </button>
+
+                                                                        {activeTab === 'pending' && (
+                                                                            <button
+                                                                                onClick={() => openBulkModal(inward._id, group.items)}
+                                                                                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                                                                                title="Edit Group"
+                                                                            >
+                                                                                <Edit3 className="w-3 h-3" />
+                                                                                Edit
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="p-4 space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar">
+                                                                    {group.items.map((item: any, i: number) => {
+                                                                        const sessionUpd = sessionUpdates[sessionKey]?.find(u => u.itemId === item._id);
+                                                                        return (
+                                                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all group/item ${sessionUpd ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 hover:bg-white border-transparent hover:border-gray-100'}`}>
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{item.materialId?.name || 'Fabric'}</div>
+                                                                                    {sessionUpd ? (
+                                                                                        <div className="text-[8px] font-black text-orange-600 bg-white border border-orange-200 px-2 py-0.5 rounded italic flex items-center gap-1">
+                                                                                            <CheckCircle2 className="w-2.5 h-2.5" /> READY TO PUSH
+                                                                                        </div>
+                                                                                    ) : activeTab === 'pending' ? (
+                                                                                        <div className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded italic">REJECTED</div>
+                                                                                    ) : (
+                                                                                        item.history?.filter((h: any) => h.action === 'Reweighted').map((h: any, idx: number) => (
+                                                                                            <div key={idx} className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded italic">
+                                                                                                Reweighted to {h.newWeight} KG on {new Date(h.timestamp).toLocaleDateString()}
+                                                                                            </div>
+                                                                                        ))
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-xs font-black text-gray-800">{item.diameter}" DIA</span>
+                                                                                        <span className="text-xs font-bold text-gray-300">|</span>
+                                                                                        <span className="text-xs font-black text-blue-600">{item.pcs} PCS</span>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        {sessionUpd ? (
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <span className="text-[10px] font-bold text-muted line-through">{item.quantity}</span>
+                                                                                                <ArrowRight className="w-3 h-3 text-orange-400" />
+                                                                                                <span className="text-sm font-black text-orange-600">{sessionUpd.newWeight} KG</span>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <span className={`${activeTab === 'pending' ? 'text-sm font-black text-red-600 line-through opacity-40' : 'text-sm font-black text-foreground'}`}>{item.quantity} KG</span>
+                                                                                        )}
+
+                                                                                        {activeTab === 'pending' && (
+                                                                                            <button
+                                                                                                onClick={() => {
+                                                                                                    setSelectedItem({ ...item, inwardId: inward._id, challanNo: inward.challanNo });
+                                                                                                    setIsModalOpen(true);
+                                                                                                }}
+                                                                                                className={`p-1.5 rounded-lg shadow-md transition-all ${sessionUpd ? 'bg-orange-500 text-white' : 'bg-primary text-white shadow-primary/10 hover:scale-105 active:scale-95'}`}
+                                                                                            >
+                                                                                                <Scale className="w-3.5 h-3.5" />
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                    </tr>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
                                     <tr className="h-12">
                                         <td colSpan={4}>
                                             <div className="flex items-center gap-6 px-10">
@@ -1055,14 +1283,7 @@ export default function FabricReweightPage() {
                         </div>
                     </div>
                 </div>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 }
-
-<style jsx global>{`
-    @media print {
-        .pdf-only { display: flex !important; }
-    }
-`}</style>

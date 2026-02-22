@@ -11,6 +11,7 @@ export default function DiameterMappingPanel() {
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
+    const [products, setProducts] = useState<{ _id: string; name: string }[]>([]);
 
     // Form state
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -18,7 +19,7 @@ export default function DiameterMappingPanel() {
     const [rows, setRows] = useState<{ diameter: string; size: string }[]>([buildRow()]);
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => { fetch_(); }, []);
+    useEffect(() => { fetch_(); fetchProducts(); }, []);
 
     const fetch_ = async () => {
         setLoading(true);
@@ -26,6 +27,13 @@ export default function DiameterMappingPanel() {
             const res = await fetch('/api/diameter-mapping');
             if (res.ok) setRecords(await res.json());
         } finally { setLoading(false); }
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const res = await fetch('/api/masters/products');
+            if (res.ok) setProducts(await res.json());
+        } catch { /* silent */ }
     };
 
     const openNew = () => {
@@ -99,13 +107,19 @@ export default function DiameterMappingPanel() {
                 {/* Product Name */}
                 <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                     <label className="text-[11px] font-black uppercase tracking-wider text-muted/70 mb-1.5 block">Product Name</label>
-                    <input
-                        autoFocus
+                    <select
                         value={productName}
                         onChange={e => setProductName(e.target.value)}
-                        placeholder="e.g. T-Shirt, Pant, Vest..."
-                        className="w-full max-w-sm h-10 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-base transition-all"
-                    />
+                        className="w-full max-w-sm h-10 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-base transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="">— Select a Product —</option>
+                        {products.map(p => (
+                            <option key={p._id} value={p.name}>{p.name}</option>
+                        ))}
+                    </select>
+                    {products.length === 0 && (
+                        <p className="text-[10px] text-orange-500 font-bold mt-1.5">⚠ No products found. Add products in Masters → Products first.</p>
+                    )}
                 </div>
 
                 {/* Mapping Table */}

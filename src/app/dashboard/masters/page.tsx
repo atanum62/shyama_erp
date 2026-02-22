@@ -11,19 +11,21 @@ import {
     Building2,
     Trash2,
     Edit,
-    Loader2,
-    Phone,
-    Hash,
-    X,
+    ClipboardList,
+    Image as ImageIcon,
+    UploadCloud,
     Palette,
     FileText,
     Ruler,
-    ClipboardList
+    Loader2,
+    X,
+    Phone,
+    Hash
 } from 'lucide-react';
 import ConsumptionPanel from '../consumption/page';
 import DiameterMappingPanel from '../diameter-mapping/page';
 
-type Tab = 'clients' | 'stitchers' | 'dyeing-houses' | 'suppliers' | 'materials' | 'colors' | 'consumption' | 'diameter-mapping';
+type Tab = 'clients' | 'stitchers' | 'dyeing-houses' | 'suppliers' | 'materials' | 'colors' | 'products' | 'consumption' | 'diameter-mapping';
 
 export default function MastersPage() {
     const [activeTab, setActiveTab] = useState<Tab>('clients');
@@ -32,6 +34,7 @@ export default function MastersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any | null>(null);
     const [viewingRates, setViewingRates] = useState<any | null>(null);
+    const [uploading, setUploading] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -44,6 +47,11 @@ export default function MastersPage() {
         category: 'Fabric', // for materials
         unit: 'KG', // for materials
         hexCode: '', // for colors
+        // Product specific
+        description: '',
+        pricePerDozen: 0,
+        pricePerPiece: 0,
+        image: '',
         // Stitcher specific
         bankDetails: {
             bankName: '',
@@ -63,6 +71,7 @@ export default function MastersPage() {
         'suppliers': { label: 'Suppliers', icon: Users, apiType: 'Supplier' },
         'materials': { label: 'Materials (BOM)', icon: Package },
         'colors': { label: 'Colors', icon: Palette },
+        'products': { label: 'Products', icon: Package },
         'consumption': { label: 'Consumption', icon: FileText },
         'diameter-mapping': { label: 'Dia → Size', icon: Ruler },
     };
@@ -80,6 +89,8 @@ export default function MastersPage() {
                 url = '/api/masters/materials';
             } else if (activeTab === 'colors') {
                 url = '/api/masters/colors';
+            } else if (activeTab === 'products') {
+                url = '/api/masters/products';
             } else if (activeTab === 'stitchers') {
                 url = '/api/masters/stitchers';
             } else {
@@ -120,12 +131,39 @@ export default function MastersPage() {
         }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const upFormData = new FormData();
+        upFormData.append('file', file);
+
+        try {
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: upFormData,
+            });
+            const data = await res.json();
+            if (data.secure_url) {
+                setFormData(prev => ({ ...prev, image: data.secure_url }));
+            } else if (data.url) {
+                setFormData(prev => ({ ...prev, image: data.url }));
+            }
+        } catch (err) {
+            console.error('Upload failed:', err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             let url = '';
             if (activeTab === 'materials') url = '/api/masters/materials';
             else if (activeTab === 'colors') url = '/api/masters/colors';
+            else if (activeTab === 'products') url = '/api/masters/products';
             else if (activeTab === 'stitchers') url = '/api/masters/stitchers';
             else url = '/api/masters/parties';
 
@@ -147,20 +185,29 @@ export default function MastersPage() {
                         code: generatedCode,
                         hexCode: formData.hexCode
                     }
-                    : {
-                        _id: editingItem?._id,
-                        name: formData.name,
-                        code: generatedCode,
-                        type: tabConfig[activeTab].apiType,
-                        contactPerson: formData.contactPerson,
-                        contactNumber: formData.phone,
-                        address: formData.address,
-                        gstin: formData.gstIn,
-                        ...(activeTab === 'stitchers' ? {
-                            bankDetails: formData.bankDetails,
-                            stitchingRates: formData.stitchingRates
-                        } : {})
-                    };
+                    : activeTab === 'products'
+                        ? {
+                            _id: editingItem?._id,
+                            name: formData.name,
+                            description: formData.description,
+                            pricePerDozen: formData.pricePerDozen,
+                            pricePerPiece: formData.pricePerPiece,
+                            image: formData.image
+                        }
+                        : {
+                            _id: editingItem?._id,
+                            name: formData.name,
+                            code: generatedCode,
+                            type: tabConfig[activeTab].apiType,
+                            contactPerson: formData.contactPerson,
+                            contactNumber: formData.phone,
+                            address: formData.address,
+                            gstin: formData.gstIn,
+                            ...(activeTab === 'stitchers' ? {
+                                bankDetails: formData.bankDetails,
+                                stitchingRates: formData.stitchingRates
+                            } : {})
+                        };
 
             const res = await fetch(url, {
                 method: editingItem ? 'PUT' : 'POST',
@@ -185,9 +232,11 @@ export default function MastersPage() {
                 ? `/api/masters/materials?id=${id}`
                 : activeTab === 'colors'
                     ? `/api/masters/colors?id=${id}`
-                    : activeTab === 'stitchers'
-                        ? `/api/masters/stitchers?id=${id}`
-                        : `/api/masters/parties?id=${id}`;
+                    : activeTab === 'products'
+                        ? `/api/masters/products?id=${id}`
+                        : activeTab === 'stitchers'
+                            ? `/api/masters/stitchers?id=${id}`
+                            : `/api/masters/parties?id=${id}`;
 
             const res = await fetch(url, { method: 'DELETE' });
             if (res.ok) {
@@ -211,6 +260,10 @@ export default function MastersPage() {
                 contactPerson: '',
                 gstIn: '',
                 hexCode: '',
+                image: '',
+                description: '',
+                pricePerDozen: 0,
+                pricePerPiece: 0,
                 bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
                 stitchingRates: [],
             });
@@ -225,6 +278,28 @@ export default function MastersPage() {
                 gstIn: '',
                 category: 'Fabric',
                 unit: 'KG',
+                image: '',
+                description: '',
+                pricePerDozen: 0,
+                pricePerPiece: 0,
+                bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
+                stitchingRates: [],
+            });
+        } else if (activeTab === 'products') {
+            setFormData({
+                name: item.name,
+                description: item.description || '',
+                pricePerDozen: item.pricePerDozen || 0,
+                pricePerPiece: item.pricePerPiece || 0,
+                code: '',
+                phone: '',
+                address: '',
+                contactPerson: '',
+                gstIn: '',
+                category: 'Fabric',
+                unit: 'KG',
+                hexCode: '',
+                image: item.image || '',
                 bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
                 stitchingRates: [],
             });
@@ -239,6 +314,10 @@ export default function MastersPage() {
                 category: 'Fabric',
                 unit: 'KG',
                 hexCode: '',
+                image: '',
+                description: '',
+                pricePerDozen: 0,
+                pricePerPiece: 0,
                 bankDetails: item.bankDetails || { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
                 stitchingRates: productCategories.map(cat => {
                     const existing = (item.stitchingRates || []).find((r: any) => r.productId === cat.id || r.category === cat.name);
@@ -262,6 +341,10 @@ export default function MastersPage() {
             category: 'Fabric',
             unit: 'KG',
             hexCode: '',
+            description: '',
+            pricePerDozen: 0,
+            pricePerPiece: 0,
+            image: '',
             bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
             stitchingRates: []
         });
@@ -342,8 +425,8 @@ export default function MastersPage() {
                                 <thead>
                                     <tr className="bg-secondary/30 text-[10px] font-bold uppercase text-muted tracking-wider border-b border-border">
                                         <th className="px-6 py-4">SL NO</th>
-                                        <th className="px-6 py-4">Name / Code</th>
-                                        {activeTab !== 'materials' && activeTab !== 'colors' && (
+                                        <th className="px-6 py-4">{activeTab === 'products' ? 'Product Name' : 'Name / Code'}</th>
+                                        {activeTab !== 'materials' && activeTab !== 'colors' && activeTab !== 'products' && (
                                             <>
                                                 <th className="px-6 py-4">Contact</th>
                                                 <th className="px-6 py-4">Address</th>
@@ -363,6 +446,13 @@ export default function MastersPage() {
                                                 <th className="px-6 py-4">Hex Code</th>
                                             </>
                                         )}
+                                        {activeTab === 'products' && (
+                                            <>
+                                                <th className="px-6 py-4">Description</th>
+                                                <th className="px-6 py-4">Price (Doz)</th>
+                                                <th className="px-6 py-4">Price (Pcs)</th>
+                                            </>
+                                        )}
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -371,10 +461,19 @@ export default function MastersPage() {
                                         <tr key={item._id} className="hover:bg-primary/5 transition-all group border-b border-border/50 last:border-0">
                                             <td className="px-6 py-4 text-xs font-bold text-muted">{index + 1}</td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-foreground">{item.name}</div>
-                                                <div className="text-[10px] text-muted font-mono uppercase tracking-tighter">{item.code}</div>
+                                                <div className="flex items-center gap-3">
+                                                    {activeTab === 'products' && item.image && (
+                                                        <img src={item.image} alt="" className="w-8 h-8 rounded-lg object-cover border border-border" />
+                                                    )}
+                                                    <div>
+                                                        <div className="font-bold text-foreground">{item.name}</div>
+                                                        {activeTab !== 'products' && (
+                                                            <div className="text-[10px] text-muted font-mono uppercase tracking-tighter">{item.code}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </td>
-                                            {activeTab !== 'materials' && activeTab !== 'colors' && (
+                                            {activeTab !== 'materials' && activeTab !== 'colors' && activeTab !== 'products' && (
                                                 <>
                                                     <td className="px-6 py-4">
                                                         <div className="text-sm font-semibold text-foreground">{item.contactPerson || '-'}</div>
@@ -419,6 +518,21 @@ export default function MastersPage() {
                                                         />
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-mono text-muted">{item.hexCode || 'N/A'}</td>
+                                                </>
+                                            )}
+                                            {activeTab === 'products' && (
+                                                <>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs text-muted max-w-[200px] line-clamp-1 leading-relaxed">
+                                                            {item.description || '-'}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm font-bold text-primary">₹{(item.pricePerDozen || 0).toFixed(2)}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm font-bold text-green-600">₹{(item.pricePerPiece || 0).toFixed(2)}</div>
+                                                    </td>
                                                 </>
                                             )}
                                             <td className="px-6 py-4 text-right">
@@ -513,14 +627,14 @@ export default function MastersPage() {
                             <form onSubmit={handleSubmit} className="p-6 space-y-5">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold uppercase text-muted tracking-wider">
-                                        {activeTab === 'colors' ? 'Color Name' : activeTab === 'materials' ? 'Material Name' : 'Business Name / Name'}
+                                        {activeTab === 'colors' ? 'Color Name' : activeTab === 'materials' ? 'Material Name' : activeTab === 'products' ? 'Product Name' : 'Business Name / Name'}
                                     </label>
                                     <input
                                         required
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                        placeholder={activeTab === 'colors' ? 'e.g. Royal Blue' : activeTab === 'materials' ? 'e.g. Cotton 30s' : 'e.g. LUX Industries Ltd.'}
+                                        placeholder={activeTab === 'colors' ? 'e.g. Royal Blue' : activeTab === 'materials' ? 'e.g. Cotton 30s' : activeTab === 'products' ? 'e.g. Polo Shirt' : 'e.g. LUX Industries Ltd.'}
                                     />
                                 </div>
 
@@ -575,6 +689,94 @@ export default function MastersPage() {
                                                 className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none uppercase font-mono text-sm focus:ring-2 focus:ring-primary/20"
                                                 placeholder="e.g. WH-01 (Leave blank to auto-generate)"
                                             />
+                                        </div>
+                                    </div>
+                                ) : activeTab === 'products' ? (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Description</label>
+                                            <textarea
+                                                value={formData.description}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                rows={2}
+                                                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl outline-none"
+                                                placeholder="e.g. Cotton T-Shirt with Round Neck"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase text-muted tracking-wider">Product Image</label>
+                                            <div className="flex items-center gap-4">
+                                                {formData.image ? (
+                                                    <div className="relative group">
+                                                        <img src={formData.image} alt="Product" className="w-16 h-16 rounded-xl object-cover border border-border shadow-sm" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, image: '' })}
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-muted bg-secondary/30">
+                                                        <ImageIcon className="w-6 h-6 mb-1 opacity-20" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="file"
+                                                        id="productImage"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={handleImageUpload}
+                                                    />
+                                                    <label
+                                                        htmlFor="productImage"
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-border rounded-xl text-sm font-semibold cursor-pointer transition-all border border-border/50"
+                                                    >
+                                                        <UploadCloud className="w-4 h-4" />
+                                                        {uploading ? 'Uploading...' : (formData.image ? 'Change Image' : 'Upload Image')}
+                                                    </label>
+                                                    <p className="text-[10px] text-muted font-bold mt-1.5">* Max 2MB (Supports JPG, PNG)</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold uppercase text-muted tracking-wider">Price (Per Dozen)</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-bold">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        required
+                                                        value={formData.pricePerDozen || ''}
+                                                        onChange={(e) => {
+                                                            const doz = parseFloat(e.target.value) || 0;
+                                                            setFormData({
+                                                                ...formData,
+                                                                pricePerDozen: doz,
+                                                                pricePerPiece: Number((doz / 12).toFixed(2))
+                                                            });
+                                                        }}
+                                                        className="w-full pl-8 pr-4 py-2.5 bg-background border border-border rounded-xl outline-none font-bold text-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold uppercase text-muted tracking-wider">Price (Per Piece)</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-bold">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        readOnly
+                                                        value={formData.pricePerPiece || ''}
+                                                        className="w-full pl-8 pr-4 py-2.5 bg-secondary/50 border border-border rounded-xl outline-none font-bold text-green-600 grayscale"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] text-muted font-bold italic">* Auto-calculated (Doz / 12)</p>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (

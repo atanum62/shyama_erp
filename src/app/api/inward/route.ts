@@ -10,7 +10,7 @@ export async function GET() {
         // Populate party and material details
         const inwards = await Inward.find()
             .populate('partyId', 'name')
-            .populate('items.materialId', 'name')
+            .populate('items.materialId', 'name subType')
             .sort({ createdAt: -1 });
         return NextResponse.json(inwards);
     } catch (error: any) {

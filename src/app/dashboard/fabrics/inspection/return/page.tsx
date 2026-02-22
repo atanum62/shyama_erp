@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Filter, AlertCircle, Truck, CheckCircle2, XCircle, X, Palette, Eye, ArrowRight, Trash2, FileText, Printer, CheckCircle, Pencil } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { RotateCcw, Search, Filter, AlertCircle, Truck, CheckCircle2, XCircle, X, Palette, Eye, ArrowRight, Trash2, FileText, Printer, CheckCircle, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function FabricReturnPage() {
     const [inwards, setInwards] = useState<any[]>([]);
@@ -11,6 +11,9 @@ export default function FabricReturnPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>({});
 
     // Rereceive Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -140,29 +143,62 @@ export default function FabricReturnPage() {
         return acc;
     }, []);
 
-    const filteredPending = flattenedItems.filter(item =>
-        item.returnStatus === 'Pending' && (
-            item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-    );
+    const filteredPending = useMemo(() => {
+        return flattenedItems.filter(item =>
+            item.returnStatus === 'Pending' && (
+                item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+    }, [flattenedItems, searchTerm]);
 
-    const activeReturned = flattenedItems.filter(item =>
-        item.returnStatus === 'Returned' && (
-            item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-    );
+    const activeReturned = useMemo(() => {
+        return flattenedItems.filter(item =>
+            item.returnStatus === 'Returned' && (
+                item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.lotNo || item.globalLotNo)?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+    }, [flattenedItems, searchTerm]);
 
-    const filteredHistory = returnHistory.filter(item =>
-        item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.partyId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.lotNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.returnChallanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.rereceiveChallanNo?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredHistory = useMemo(() => {
+        return returnHistory.filter(item =>
+            item.challanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.partyId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.lotNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.returnChallanNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.rereceiveChallanNo?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [returnHistory, searchTerm]);
+
+    // Dashboard Analytics Logic
+    const dashboardStats = useMemo(() => {
+        const pendingCount = filteredPending.length;
+        const pendingWeight = filteredPending.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        const atDyeingCount = activeReturned.length;
+        const totalHistoryCount = filteredHistory.length;
+
+        return {
+            pendingCount,
+            pendingWeight: pendingWeight.toFixed(1),
+            atDyeingCount,
+            totalHistoryCount
+        };
+    }, [filteredPending, activeReturned, filteredHistory]);
+
+    const paginatedItems = useMemo(() => {
+        const start = (currentPage - 1) * rowsPerPage;
+        const data = activeTab === 'pending' ? filteredPending : [...activeReturned, ...filteredHistory];
+        return data.slice(start, start + rowsPerPage);
+    }, [activeTab, filteredPending, activeReturned, filteredHistory, currentPage, rowsPerPage]);
+
+    const totalPages = Math.ceil((activeTab === 'pending' ? filteredPending.length : (activeReturned.length + filteredHistory.length)) / rowsPerPage);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, activeTab, rowsPerPage]);
 
     const handleUpdateReturnStatus = async (inwardId: string, itemId: string | string[], returnStatus: string) => {
         try {
@@ -393,41 +429,124 @@ export default function FabricReturnPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">Fabric Return Management</h1>
-                    <p className="text-muted text-sm">Track and manage returns to dyeing houses for rejected fabric items.</p>
+                    <p className="text-muted text-sm font-medium">Manage color-rejected lots and track redyeing from dyeing houses.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
+            </div>
+
+            {/* Overview Analytics Grid */}
+            {dashboardStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
+                                <AlertCircle className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingCount} <span className="text-[10px] text-muted font-bold">Groups</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Pending Returns</p>
+                    </div>
+
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-blue-500/10 text-blue-600 rounded-xl">
+                                <RotateCcw className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingWeight} <span className="text-[10px] text-muted font-bold">KG</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Return Volume</p>
+                    </div>
+
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                                <Truck className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.atDyeingCount} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Currently at Dyeing</p>
+                    </div>
+
+                    <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
+                                <CheckCircle2 className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalHistoryCount} <span className="text-[10px] text-muted font-bold">Logs</span></h3>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Return History</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Controls Bar: Search, Pagination, Rows */}
+            <div className="bg-card p-4 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-80">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                         <input
                             type="text"
-                            placeholder="Search returns..."
+                            placeholder="Search by lot or color..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 w-64"
+                            className="w-full pl-10 pr-4 py-2 bg-secondary/20 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                         />
                     </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-muted uppercase tracking-widest">Rows:</span>
+                        <select
+                            value={rowsPerPage}
+                            onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                            className="bg-card border border-border rounded-lg text-xs font-black p-1 focus:outline-none"
+                        >
+                            {[10, 25, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                    </div>
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-muted uppercase tracking-widest mr-2">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="p-1.5 border border-border rounded-lg bg-card hover:bg-secondary disabled:opacity-50 transition-all"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="p-1.5 border border-border rounded-lg bg-card hover:bg-secondary disabled:opacity-50 transition-all"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-border">
-                <button
-                    onClick={() => setActiveTab('pending')}
-                    className={`px-6 py-3 text-sm font-bold transition-all relative ${activeTab === 'pending' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
-                >
-                    Pending Returns ({filteredPending.length})
-                    {activeTab === 'pending' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.5)]"></div>}
-                </button>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`px-6 py-3 text-sm font-bold transition-all relative ${activeTab === 'history' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
-                >
-                    Return History ({filteredHistory.length + activeReturned.length})
-                    {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(var(--primary),0.5)]"></div>}
-                </button>
-            </div>
-
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden min-h-[400px]">
+                <div className="flex items-center justify-between p-4 border-b border-border bg-secondary/5">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setActiveTab('pending')}
+                            className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted hover:bg-secondary'}`}
+                        >
+                            Pending Returns ({filteredPending.length})
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted hover:bg-secondary'}`}
+                        >
+                            Return History ({filteredHistory.length + activeReturned.length})
+                        </button>
+                    </div>
+                </div>
+
                 <div className="overflow-x-auto">
                     {activeTab === 'pending' ? (
                         <table className="w-full text-left border-collapse">
@@ -450,7 +569,7 @@ export default function FabricReturnPage() {
                                         <RotateCcw className="w-12 h-12 text-muted mx-auto mb-4" />
                                         <p className="text-muted">No pending color returns found.</p>
                                     </td></tr>
-                                ) : filteredPending.map((item, idx) => (
+                                ) : (paginatedItems as any[]).map((item, idx) => (
                                     <tr key={item._id || `${item.inwardId}-${idx}`} className="hover:bg-secondary/5 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-foreground">{item.challanNo}</div>
@@ -465,23 +584,32 @@ export default function FabricReturnPage() {
                                                 <div className="text-[9px] font-bold text-muted uppercase tracking-tighter mt-1">{item.items.length} Items in Group</div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                                                {item.isGroup ? item.items.slice(0, 3).map((it: any, i: number) => (
-                                                    <div key={i} className="flex items-center gap-1.5 bg-secondary/30 px-2 py-0.5 rounded-full border border-border/50">
-                                                        <div className="w-2 h-2 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: it.color.toLowerCase() }}></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-tight">{it.color}</span>
+                                        <td className="px-6 py-4 relative">
+                                            <button
+                                                onClick={() => setExpandedRows(prev => ({ ...prev, [item.lotNo + item.returnStatus]: !prev[item.lotNo + item.returnStatus] }))}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-secondary/30 hover:bg-secondary rounded-lg transition-all group"
+                                            >
+                                                <Palette className="w-4 h-4 text-primary" />
+                                                <span className="text-xs font-bold">View Colors</span>
+                                                <ChevronRight className={`w-3 h-3 transition-transform ${expandedRows[item.lotNo + item.returnStatus] ? 'rotate-90' : ''}`} />
+                                            </button>
+                                            {expandedRows[item.lotNo + item.returnStatus] && (
+                                                <div className="absolute z-10 mt-2 p-3 bg-card border border-border rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-2 w-max max-w-[300px]">
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {item.isGroup ? item.items.map((it: any, i: number) => (
+                                                            <div key={i} className="flex items-center gap-2 bg-secondary/20 px-2 py-1 rounded-md">
+                                                                <div className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: it.color.toLowerCase() }}></div>
+                                                                <span className="text-[10px] font-bold">{it.color}</span>
+                                                            </div>
+                                                        )) : (
+                                                            <div className="flex items-center gap-2 bg-secondary/20 px-2 py-1 rounded-md">
+                                                                <div className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: item.color.toLowerCase() }}></div>
+                                                                <span className="text-[10px] font-bold">{item.color}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )) : (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 rounded-full border border-border shadow-sm" style={{ backgroundColor: item.color.toLowerCase() }}></div>
-                                                        <span className="text-sm font-semibold text-foreground uppercase tracking-tight">{item.color}</span>
-                                                    </div>
-                                                )}
-                                                {item.isGroup && item.items.length > 3 && (
-                                                    <span className="text-[10px] font-bold text-muted self-center ml-1">+{item.items.length - 3} more</span>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-sm font-bold text-primary">{Number(item.quantity).toFixed(2)} KG</div>
@@ -581,142 +709,199 @@ export default function FabricReturnPage() {
                                     </td></tr>
                                 ) : (
                                     <>
-                                        {/* Active Returns awaiting Re-receipt */}
-                                        {activeReturned.map((item, idx) => (
-                                            <tr key={`active-${item._id}`} className="hover:bg-orange-500/5 transition-colors border-l-4 border-orange-500/20">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-foreground">{item.challanNo}</div>
-                                                    <div className="text-[10px] text-orange-600 font-black bg-orange-500/5 px-1.5 py-0.5 rounded border border-orange-500/10 uppercase tracking-tight w-fit mt-1">
-                                                        Lot: {item.lotNo || '-'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
-                                                    <div className="text-[10px] text-muted">{item.materialName}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-600 animate-pulse">
-                                                        <Truck className="w-3 h-3" />
-                                                        RETURNED (AWAITING)
-                                                    </div>
-                                                    <div className="text-[9px] text-muted mt-1 font-medium">Sent: {new Date(item.items?.[0]?.returnDate || Date.now()).toLocaleDateString()}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: item.color?.toLowerCase() }}></div>
-                                                            <span className="text-[11px] font-bold">{item.color}</span>
-                                                        </div>
-                                                        <div className="text-[9px] text-muted uppercase mt-0.5">Original Color</div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-bold text-foreground">{Number(item.quantity).toFixed(2)} KG</div>
-                                                    <div className="text-[10px] text-muted">{item.totalPcs} PCS</div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center gap-2 justify-end">
-                                                        <button
-                                                            onClick={() => openDetailedView(item)}
-                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/detail"
-                                                            title="Detailed View (Doc Format)"
-                                                        >
-                                                            <FileText className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => openReturnModal(item)}
-                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/edit"
-                                                            title="Edit Return Information"
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleUpdateReturnStatus(item.inwardId, item.items.map((it: any) => it._id), 'Pending')}
-                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
-                                                            title="Reset to Pending"
-                                                        >
-                                                            <RotateCcw className="w-4 h-4 group-hover/reset:rotate-[-45deg] transition-transform" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => openRereceiveModal(item)}
-                                                            className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-1"
-                                                        >
-                                                            <CheckCircle2 className="w-3 h-3" />
-                                                            Rereceive
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-
-                                        {/* Completed History Records */}
-                                        {filteredHistory.map((hist, idx) => (
-                                            <tr key={hist._id || idx} className="hover:bg-secondary/5 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-foreground">{hist.challanNo}</div>
-                                                    <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight w-fit mt-1">Lot: {hist.lotNo || '-'}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-semibold">{hist.partyId?.name || 'Unknown'}</div>
-                                                    <div className="text-[10px] text-muted">{hist.materialId?.name}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1.5">
-                                                        <div className="flex items-center gap-2 text-[10px]">
-                                                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                                            <span className="font-bold text-muted uppercase">Returned:</span>
-                                                            <span className="font-medium">{new Date(hist.returnDate).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-[10px]">
-                                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                                            <span className="font-bold text-muted uppercase">Received:</span>
-                                                            <span className="font-medium">{new Date(hist.rereceiveDate).toLocaleDateString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: (hist.previousColor || hist.originalColor)?.toLowerCase() }}></div>
-                                                            <span className="text-[9px] font-bold text-muted uppercase mt-0.5">{hist.previousColor || hist.originalColor}</span>
-                                                        </div>
-                                                        <ArrowRight className="w-3 h-3 text-muted" />
-                                                        <div className="flex flex-col items-center">
-                                                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: hist.newColor?.toLowerCase() }}></div>
-                                                            <span className="text-[9px] font-bold text-primary uppercase mt-0.5">{hist.newColor}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-bold text-foreground">{hist.receivedQuantity} KG</div>
-                                                    <div className="text-[10px] text-muted">Was: {hist.originalQuantity} KG</div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center gap-2 justify-end">
-                                                        <button
-                                                            onClick={() => openDetailedView(hist)}
-                                                            className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
-                                                            title="View Return Advice Document"
-                                                        >
-                                                            <FileText className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteHistory(hist._id)}
-                                                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 rounded-lg transition-all border border-red-500/20"
-                                                            title="Delete History Record"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {/* Combined Paginated Data for History Tab */}
+                                        {(paginatedItems as any[]).map((item, idx) => {
+                                            if (item.returnStatus === 'Returned') {
+                                                return (
+                                                    <tr key={`active-${item._id}`} className="hover:bg-orange-500/5 transition-colors border-l-4 border-orange-500/20">
+                                                        <td className="px-6 py-4">
+                                                            <div className="font-bold text-foreground">{item.challanNo}</div>
+                                                            <div className="text-[10px] text-orange-600 font-black bg-orange-500/5 px-1.5 py-0.5 rounded border border-orange-500/10 uppercase tracking-tight w-fit mt-1">
+                                                                Lot: {item.lotNo || '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-sm font-semibold">{item.partyName || 'Unknown'}</div>
+                                                            <div className="text-[10px] text-muted">{item.materialName}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-600 animate-pulse">
+                                                                <Truck className="w-3 h-3" />
+                                                                RETURNED (AWAITING)
+                                                            </div>
+                                                            <div className="text-[9px] text-muted mt-1 font-medium">Sent: {new Date(item.items?.[0]?.returnDate || Date.now()).toLocaleDateString()}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: item.color?.toLowerCase() }}></div>
+                                                                    <span className="text-[11px] font-bold">{item.color}</span>
+                                                                </div>
+                                                                <div className="text-[9px] text-muted uppercase mt-0.5">Original Color</div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-sm font-bold text-foreground">{Number(item.quantity).toFixed(2)} KG</div>
+                                                            <div className="text-[10px] text-muted">{item.totalPcs} PCS</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center gap-2 justify-end">
+                                                                <button
+                                                                    onClick={() => openDetailedView(item)}
+                                                                    className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/detail"
+                                                                    title="Detailed View (Doc Format)"
+                                                                >
+                                                                    <FileText className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openReturnModal(item)}
+                                                                    className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/edit"
+                                                                    title="Edit Return Information"
+                                                                >
+                                                                    <Pencil className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleUpdateReturnStatus(item.inwardId, item.items.map((it: any) => it._id), 'Pending')}
+                                                                    className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/reset"
+                                                                    title="Reset to Pending"
+                                                                >
+                                                                    <RotateCcw className="w-4 h-4 group-hover/reset:rotate-[-45deg] transition-transform" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openRereceiveModal(item)}
+                                                                    className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-1"
+                                                                >
+                                                                    <CheckCircle2 className="w-3 h-3" />
+                                                                    Rereceive
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            } else {
+                                                const hist = item;
+                                                return (
+                                                    <tr key={hist._id || idx} className="hover:bg-secondary/5 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="font-bold text-foreground">{hist.challanNo}</div>
+                                                            <div className="text-[10px] text-primary font-black bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 uppercase tracking-tight w-fit mt-1">Lot: {hist.lotNo || '-'}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-sm font-semibold">{hist.partyId?.name || 'Unknown'}</div>
+                                                            <div className="text-[10px] text-muted">{hist.materialId?.name}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex items-center gap-2 text-[10px]">
+                                                                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                                                    <span className="font-bold text-muted uppercase">Returned:</span>
+                                                                    <span className="font-medium">{new Date(hist.returnDate).toLocaleDateString()}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-[10px]">
+                                                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                                    <span className="font-bold text-muted uppercase">Received:</span>
+                                                                    <span className="font-medium">{new Date(hist.rereceiveDate).toLocaleDateString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: (hist.previousColor || hist.originalColor)?.toLowerCase() }}></div>
+                                                                    <span className="text-[9px] font-bold text-muted uppercase mt-0.5">{hist.previousColor || hist.originalColor}</span>
+                                                                </div>
+                                                                <ArrowRight className="w-3 h-3 text-muted" />
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: hist.newColor?.toLowerCase() }}></div>
+                                                                    <span className="text-[9px] font-bold text-primary uppercase mt-0.5">{hist.newColor}</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-sm font-bold text-foreground">{hist.receivedQuantity} KG</div>
+                                                            <div className="text-[10px] text-muted">Was: {hist.originalQuantity} KG</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center gap-2 justify-end">
+                                                                <button
+                                                                    onClick={() => openDetailedView(hist)}
+                                                                    className="p-1.5 bg-secondary hover:bg-secondary/80 text-muted-foreground rounded-lg transition-all border border-border group/view"
+                                                                    title="View Return Advice Document"
+                                                                >
+                                                                    <FileText className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteHistory(hist._id)}
+                                                                    className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 rounded-lg transition-all border border-red-500/20"
+                                                                    title="Delete History Record"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+                                        })}
                                     </>
                                 )}
                             </tbody>
                         </table>
                     )}
                 </div>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-border bg-secondary/10 flex items-center justify-between">
+                        <div className="text-[10px] font-black text-muted uppercase tracking-widest leading-none">
+                            Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, (activeTab === 'pending' ? filteredPending.length : (activeReturned.length + filteredHistory.length)))} of {(activeTab === 'pending' ? filteredPending.length : (activeReturned.length + filteredHistory.length))} records
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 border border-border rounded-xl bg-card hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <div className="flex items-center gap-1.5">
+                                {[...Array(totalPages)].map((_, i) => {
+                                    const pageNum = i + 1;
+                                    if (
+                                        pageNum === 1 ||
+                                        pageNum === totalPages ||
+                                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                                    ) {
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => setCurrentPage(pageNum)}
+                                                className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-primary text-white shadow-lg shadow-primary/20 translate-y-[-2px]' : 'bg-card border border-border text-muted hover:bg-secondary active:scale-95'}`}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    } else if (
+                                        pageNum === 2 ||
+                                        pageNum === totalPages - 1
+                                    ) {
+                                        return <span key={pageNum} className="text-muted text-[10px] font-black mx-0.5">...</span>;
+                                    }
+                                    return null;
+                                }).filter(Boolean).reduce((acc: any[], curr: any, idx, arr) => {
+                                    if (curr.type === 'span' && arr[idx - 1]?.type === 'span') return acc;
+                                    return [...acc, curr];
+                                }, [])}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 border border-border rounded-xl bg-card hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Rereceive Modal */}
