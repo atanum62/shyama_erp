@@ -441,14 +441,14 @@ export default function CuttingSizePage() {
     };
 
     return (
-        <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50 pb-20">
+        <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-background pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                         <Layers className="w-6 h-6 text-primary" />
                         Fabric Lot Assignment
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Link fabric lots directly to product master data for production calculation</p>
+                    <p className="text-sm text-muted mt-1 font-medium">Link fabric lots directly to product master data for production calculation</p>
                 </div>
             </div>
 
@@ -555,14 +555,14 @@ export default function CuttingSizePage() {
             {/* Lot Summary Cards */}
             <div className="space-y-4">
                 {loading ? (
-                    <div className="h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200">
+                    <div className="h-64 flex flex-col items-center justify-center bg-card rounded-2xl border border-border">
                         <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                        <span className="text-sm font-medium text-slate-500 italic tracking-widest">Fetching Lot Portfolio...</span>
+                        <span className="text-sm font-medium text-muted italic tracking-widest">Fetching Lot Portfolio...</span>
                     </div>
                 ) : filteredLots.length === 0 ? (
-                    <div className="h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-slate-300">
-                        <Package className="w-12 h-12 text-slate-300 mb-3" />
-                        <p className="text-slate-500 font-medium tracking-tight">No lots ready for assignment</p>
+                    <div className="h-64 flex flex-col items-center justify-center bg-card rounded-2xl border border-dashed border-border/50">
+                        <Package className="w-12 h-12 text-muted/30 mb-3" />
+                        <p className="text-muted font-medium tracking-tight">No lots ready for assignment</p>
                     </div>
                 ) : (
                     <>
@@ -611,7 +611,7 @@ export default function CuttingSizePage() {
                                             <div className="flex items-center gap-2 bg-secondary/20 p-1.5 rounded-xl border border-border/50">
                                                 <select
                                                     onChange={(e) => handleLotProductSelect(lot.lotNo, e.target.value)}
-                                                    className="bg-transparent h-8 px-2 text-[10px] font-bold uppercase tracking-widest outline-none cursor-pointer"
+                                                    className="bg-card text-foreground h-8 px-2 text-[10px] font-bold uppercase tracking-widest outline-none cursor-pointer rounded-lg border border-border/50 focus:ring-2 focus:ring-primary/20"
                                                 >
                                                     <option value="">Map All To...</option>
                                                     {masterProducts.map(p => <option key={p._id} value={p.name}>{p.name}</option>)}
@@ -794,10 +794,10 @@ export default function CuttingSizePage() {
                                                                                         [item._id]: { productName: pName, size: autoSize }
                                                                                     }));
                                                                                 }}
-                                                                                className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold shadow-sm outline-none focus:ring-2 focus:ring-primary/20 w-48 transition-all hover:border-primary/30"
+                                                                                className="h-10 px-3 bg-card border border-border text-foreground rounded-xl text-xs font-bold shadow-sm outline-none focus:ring-2 focus:ring-primary/20 w-48 transition-all hover:border-primary/30"
                                                                             >
-                                                                                <option value="">Select Product...</option>
-                                                                                {masterProducts.map(p => <option key={p._id} value={p.name}>{p.name}</option>)}
+                                                                                <option value="" className="bg-card text-foreground">Select Product...</option>
+                                                                                {masterProducts.map(p => <option key={p._id} value={p.name} className="bg-card text-foreground">{p.name}</option>)}
                                                                             </select>
 
                                                                             {draft.productName && (
@@ -816,13 +816,13 @@ export default function CuttingSizePage() {
                                                                                         <select
                                                                                             value={draft.size}
                                                                                             onChange={(e) => setDraftSelections(prev => ({ ...prev, [item._id]: { ...draft, size: e.target.value } }))}
-                                                                                            className="h-9 px-3 bg-white border-2 border-amber-300 rounded-xl text-[10px] font-black outline-none focus:ring-2 focus:ring-amber-400/20 w-32 shadow-sm text-amber-700 animate-pulse"
+                                                                                            className="h-9 px-3 bg-card border-2 border-amber-500/20 rounded-xl text-[10px] font-black outline-none focus:ring-2 focus:ring-amber-500/40 w-32 shadow-sm text-amber-500 animate-pulse"
                                                                                         >
-                                                                                            <option value="">Pick Size...</option>
+                                                                                            <option value="" className="bg-card text-amber-500">Pick Size...</option>
                                                                                             {(consumptions.find(c =>
                                                                                                 c.productName.trim().toLowerCase() === draft.productName.trim().toLowerCase()
                                                                                             )?.variations || []).map((v: any) => (
-                                                                                                <option key={v.size} value={v.size}>{v.size}</option>
+                                                                                                <option key={v.size} value={v.size} className="bg-card text-amber-500">{v.size}</option>
                                                                                             ))}
                                                                                         </select>
                                                                                     )}
@@ -834,15 +834,15 @@ export default function CuttingSizePage() {
                                                                 <td className="px-6 py-4 text-center">
                                                                     {asgn ? (
                                                                         <div className="flex flex-col items-center">
-                                                                            <div className="text-sm font-black text-green-600 leading-none">{asgn.totalDozen} <span className="text-[8px] uppercase">Doz</span></div>
+                                                                            <div className="text-sm font-black text-green-500 leading-none">{asgn.totalDozen} <span className="text-[8px] uppercase">Doz</span></div>
                                                                             {asgn.date && (
-                                                                                <div className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                                                                <div className="text-[8px] font-bold text-muted mt-1 uppercase tracking-tighter">
                                                                                     {new Date(asgn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                                                 </div>
                                                                             )}
                                                                         </div>
                                                                     ) : (
-                                                                        <span className="text-slate-300 italic text-[10px]">Pending Assignment</span>
+                                                                        <span className="text-muted/50 italic text-[10px]">Pending Assignment</span>
                                                                     )}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-right">
