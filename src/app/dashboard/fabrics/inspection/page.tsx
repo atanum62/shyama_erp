@@ -577,7 +577,7 @@ export default function FabricInspectionPage() {
                                 </td></tr>
                             ) : paginatedInwards.map((inward) => (
                                 <React.Fragment key={inward._id}>
-                                    <tr className="bg-secondary/5 group border-t-8 border-white first:border-0 hover:bg-secondary/10 transition-colors">
+                                    <tr className="bg-secondary/5 group hover:bg-secondary/10 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <button

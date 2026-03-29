@@ -13,9 +13,21 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     CheckCircle2,
-    Clock
+    Clock,
+    ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const areaChartData = [
+    { name: 'Mon', fabric: 4000, dispatch: 2400 },
+    { name: 'Tue', fabric: 3000, dispatch: 1398 },
+    { name: 'Wed', fabric: 2000, dispatch: 9800 },
+    { name: 'Thu', fabric: 2780, dispatch: 3908 },
+    { name: 'Fri', fabric: 1890, dispatch: 4800 },
+    { name: 'Sat', fabric: 2390, dispatch: 3800 },
+    { name: 'Sun', fabric: 3490, dispatch: 4300 },
+];
 
 export default function DashboardPage() {
     const [stats, setStats] = useState<any>(null);
@@ -84,7 +96,7 @@ export default function DashboardPage() {
                     <div className="p-6 border-b border-border bg-secondary/20 flex items-center justify-between">
                         <h3 className="font-bold flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-primary" />
-                            Production Flow Analysis
+                            Operations Pipeline
                         </h3>
                         <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">LIVE</span>
                     </div>
@@ -148,6 +160,92 @@ export default function DashboardPage() {
                     <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:opacity-90 transition-all mt-4">
                         Generate Monthly Report
                     </button>
+                </div>
+            </div>
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+                {/* Area Chart Component */}
+                <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-border bg-secondary/10">
+                        <h3 className="font-bold flex items-center gap-2 text-sm text-muted uppercase tracking-widest">
+                            <TrendingUp className="w-5 h-5 text-primary" />
+                            Production vs Dispatch Trend
+                        </h3>
+                    </div>
+                    <div className="p-6 h-80 w-full bg-card">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={areaChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorFabric" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                                    </linearGradient>
+                                    <linearGradient id="colorDispatch" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                <Tooltip contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                                <Area type="monotone" dataKey="fabric" stroke="#f97316" fillOpacity={1} fill="url(#colorFabric)" />
+                                <Area type="monotone" dataKey="dispatch" stroke="#10b981" fillOpacity={1} fill="url(#colorDispatch)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Flow Chart Component */}
+                <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-border bg-secondary/10">
+                        <h3 className="font-bold flex items-center gap-2 text-sm text-muted uppercase tracking-widest">
+                            <Building2 className="w-5 h-5 text-blue-500" />
+                            Operations Flow Chart
+                        </h3>
+                    </div>
+                    <div className="p-8 flex-1 flex flex-col justify-center items-center gap-8 bg-card">
+                        {/* Flow Nodes */}
+                        <div className="flex flex-col md:flex-row items-center w-full justify-between gap-2">
+                            <div className="flex flex-col items-center gap-3 w-28 group">
+                                <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-lg border-2 border-blue-400 group-hover:scale-110 transition-transform">
+                                    <Package className="w-8 h-8" />
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold text-center uppercase">Inward Lots</span>
+                            </div>
+                            
+                            <ArrowRight className="w-6 h-6 text-muted rotate-90 md:rotate-0 flex-shrink-0" />
+                            
+                            <div className="flex flex-col items-center gap-3 w-28 group">
+                                <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center shadow-lg border-2 border-orange-400 group-hover:scale-110 transition-transform">
+                                    <Scissors className="w-8 h-8" />
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold text-center uppercase">Cutting</span>
+                            </div>
+
+                            <ArrowRight className="w-6 h-6 text-muted rotate-90 md:rotate-0 flex-shrink-0" />
+
+                            <div className="flex flex-col items-center gap-3 w-28 group">
+                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center shadow-lg border-2 border-purple-400 group-hover:scale-110 transition-transform">
+                                    <UserCircle className="w-8 h-8" />
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold text-center uppercase">Stitching</span>
+                            </div>
+
+                            <ArrowRight className="w-6 h-6 text-muted rotate-90 md:rotate-0 flex-shrink-0" />
+
+                            <div className="flex flex-col items-center gap-3 w-28 group">
+                                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center shadow-lg border-2 border-green-400 group-hover:scale-110 transition-transform">
+                                    <Truck className="w-8 h-8" />
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold text-center uppercase">Dispatch</span>
+                            </div>
+                        </div>
+                        
+                        <div className="w-full mt-auto bg-green-500/10 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-900/50 text-center text-xs text-green-700 dark:text-green-400">
+                            Flow completion rate: <strong>88% (Healthy)</strong>. No major bottlenecks detected.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

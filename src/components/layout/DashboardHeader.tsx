@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Bell } from 'lucide-react';
 
 export function DashboardHeader() {
     const { data: session } = useSession();
@@ -49,6 +50,10 @@ export function DashboardHeader() {
             </div>
 
             <div className="flex items-center gap-6 h-full">
+                <button className="relative p-2 text-muted hover:text-foreground transition-colors rounded-full hover:bg-muted/10">
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+                </button>
                 <ThemeToggle />
 
                 <div className="flex items-center gap-4 border-l border-border pl-6 h-8">

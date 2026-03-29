@@ -533,7 +533,7 @@ export default function CuttingPage() {
 
     if (view === 'form') {
         return (
-            <div id="printable-area" className="p-2 bg-white space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 rounded-2xl">
+            <div id="printable-area" className="p-2 space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 rounded-2xl">
                 {/* Header Actions */}
                 <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border border-border shadow-sm">
                     <button
