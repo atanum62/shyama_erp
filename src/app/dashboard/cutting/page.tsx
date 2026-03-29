@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import {
     Plus, X, Trash2, Save, FileText, Search, ArrowLeft,
-    CheckCircle2, Clock, Scissors
+    CheckCircle2, Clock, Scissors, Download, Printer, Edit, Edit2
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 type RowData = {
     srNo: number;
@@ -48,6 +50,8 @@ export default function CuttingPage() {
     const [materials, setMaterials] = useState<any[]>([]);
     const [view, setView] = useState<'list' | 'form'>('list');
     const [saving, setSaving] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [activeSheet, setActiveSheet] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [consumptions, setConsumptions] = useState<any[]>([]);
 
@@ -303,8 +307,11 @@ export default function CuttingPage() {
                 rows,
                 status,
             };
-            const res = await fetch('/api/cutting-sheets', {
-                method: 'POST',
+            const url = activeSheet ? `/api/cutting-sheets?id=${activeSheet._id}` : '/api/cutting-sheets';
+            const method = activeSheet ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
@@ -333,6 +340,185 @@ export default function CuttingPage() {
         setRows([emptyRow(1)]);
     };
 
+    const handleView = (sheet: any) => {
+        setForm({
+            date: sheet.date?.split('T')[0] || '',
+            lotNo: sheet.lotNo || '',
+            challanNo: sheet.challanNo || '',
+            productName: sheet.productName || '',
+            gsm: sheet.gsm || '',
+            totalRolls: String(sheet.totalRolls || ''),
+            quality: sheet.quality || '',
+            totalWeight: String(sheet.totalWeight || ''),
+            color: sheet.color || '',
+            remarks: sheet.remarks || '',
+            interlockWeight: String(sheet.interlockWeight || ''),
+            interlockRolls: String(sheet.interlockRolls || ''),
+            ribWeight: String(sheet.ribWeight || ''),
+            ribRolls: String(sheet.ribRolls || ''),
+        });
+        setRows(sheet.rows || []);
+        setActiveSheet(sheet);
+        setView('form');
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!activeSheet) return;
+        setIsDownloading(true);
+        try {
+            // 1. Create a hidden container for the printable report if it doesn't exist
+            let container = document.getElementById('report-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'report-container';
+                // Move out of view
+                container.style.position = 'absolute';
+                container.style.left = '-9999px';
+                container.style.top = '0';
+                container.style.width = '210mm'; // Standard A4 Width
+                container.style.backgroundColor = 'white';
+                container.style.color = 'black';
+                document.body.appendChild(container);
+            }
+
+            // 2. Clear and fill the container with a simple, safe-color HTML template
+            const dateStr = new Date(activeSheet.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            
+            container.innerHTML = `
+                <div style="padding: 20mm; font-family: sans-serif; background: #ffffff; color: #000000; min-height: 297mm;">
+                    <!-- Report Header -->
+                    <div style="border-bottom: 2px solid #000000; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px;">CUTTING ORDER SHEET</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; font-weight: 700; color: #666666;">PRODUCTION MANAGEMENT SYSTEM</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p style="margin: 0; font-size: 14px; font-weight: 900;">${activeSheet.sheetNo}</p>
+                            <p style="margin: 0; font-size: 11px; font-weight: 700;">DATE: ${dateStr}</p>
+                        </div>
+                    </div>
+
+                    <!-- Master Information Table -->
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="font-size: 10px; font-weight: 900; background: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin-bottom: 15px;">MASTER INFORMATION</h3>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">LOT NO</div><div style="font-weight: 900;">${activeSheet.lotNo}</div></td>
+                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">CHALLAN NO</div><div style="font-weight: 900;">${activeSheet.challanNo || 'N/A'}</div></td>
+                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">PRODUCT</div><div style="font-weight: 900; color: #2563eb;">${activeSheet.productName}</div></td>
+                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">GSM</div><div style="font-weight: 900;">${activeSheet.gsm}</div></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">QUALITY</div><div style="font-weight: 900;">${activeSheet.quality}</div></td>
+                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">COLOR</div><div style="font-weight: 900;">${activeSheet.color}</div></td>
+                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">TOTAL ROLL</div><div style="font-weight: 900;">${activeSheet.totalRolls}</div></td>
+                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">TOTAL WT</div><div style="font-weight: 900;">${activeSheet.totalWeight} KG</div></td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Main Cutting Details Table -->
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="font-size: 10px; font-weight: 900; background: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin-bottom: 15px;">CUTTING DETAILS</h3>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                            <thead style="background: #fafafa;">
+                                <tr>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">SR</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: left;">SLIP NO</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">T.SLIP</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">SIZE</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">DOZ</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">PCS</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">WSTG</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">IN RB</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">FOL RB</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center; background: #eeeeee;">TOT WT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${(activeSheet.rows || []).map((row: any, i: number) => `
+                                    <tr>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${i + 1}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; font-weight: 700;">${row.slipNo}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.totalSlip}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; font-weight: 900;">${row.size}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.doz}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; color: #666;">${row.pcs}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.wastage}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.inRB}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.folRB}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; font-weight: 900; background: #f9fafb;">${row.totalRowWeight}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                            <tfoot style="background: #f0f0f0;">
+                                <tr style="font-weight: 900; font-size: 13px;">
+                                    <td colspan="4" style="padding: 12px; border: 1px solid #dddddd; text-align: right;">GRAND TOTALS</td>
+                                    <td style="padding: 12px; border: 1px solid #dddddd; text-align: center;">${activeSheet.grandTotalDozens}</td>
+                                    <td style="padding: 12px; border: 1px solid #dddddd; text-align: center;">${activeSheet.grandTotalPieces}</td>
+                                    <td colspan="3" style="padding: 12px; border: 1px solid #dddddd;"></td>
+                                    <td style="padding: 12px; border: 1px solid #dddddd; text-align: center; background: #e5e7eb;">${activeSheet.totalFabricUsedKg?.toFixed(2)} KG</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Material Reconciliation (Simplified) -->
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1; border: 1px solid #eeeeee; padding: 15px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 10px; font-weight: 900; color: #2563eb; text-transform: uppercase;">Interlock Balance</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <span style="font-size: 20px; font-weight: 900;">${activeSheet.totalFabricUsedKg?.toFixed(2)}</span>
+                                <span style="font-size: 11px; font-weight: 700; color: #999;">Total Used (KG)</span>
+                            </div>
+                        </div>
+                        <div style="flex: 1; border: 1px solid #eeeeee; padding: 15px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 10px; font-weight: 900; color: #ea580c; text-transform: uppercase;">Wastage Control</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <span style="font-size: 20px; font-weight: 900;">${activeSheet.totalWastageKg?.toFixed(2)}</span>
+                                <span style="font-size: 11px; font-weight: 700; color: #999;">Total Loss (KG)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 50px; border-top: 1px dashed #cccccc; padding-top: 20px; color: #999999; font-size: 9px; text-align: center;">
+                        This is a computer generated cutting order from Shyama ERP. System Date: ${new Date().toLocaleString()}
+                    </div>
+                </div>
+            `;
+
+            // 3. Use html2canvas on the simple, safe container
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Cutting_Sheet_${activeSheet?.sheetNo || 'New'}.pdf`);
+
+            // 4. Optionally remove the container
+            // container.remove();
+        } catch (error) {
+            console.error('PDF Generation failed:', error);
+            alert('Failed to generate PDF');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     const handleDelete = async (id: string) => {
         if (!confirm('Delete this cutting sheet?')) return;
         await fetch(`/api/cutting-sheets?id=${id}`, { method: 'DELETE' });
@@ -347,7 +533,7 @@ export default function CuttingPage() {
 
     if (view === 'form') {
         return (
-            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div id="printable-area" className="p-2 bg-white space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 rounded-2xl">
                 {/* Header Actions */}
                 <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border border-border shadow-sm">
                     <button
@@ -364,21 +550,33 @@ export default function CuttingPage() {
                         <p className="text-muted text-[11px] font-bold uppercase tracking-wider">Production Planning / Cutting Sheet</p>
                     </div>
                     <div className="flex gap-3">
-                        <button
-                            onClick={() => handleSubmit('Draft')}
-                            disabled={saving}
-                            className="px-5 py-2.5 border border-border bg-background rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-secondary transition-all"
-                        >
-                            <Save className="w-4 h-4" />
-                            Draft
-                        </button>
+                        {activeSheet && (
+                            <button
+                                onClick={handleDownloadPDF}
+                                disabled={isDownloading}
+                                className="px-5 py-2.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all"
+                            >
+                                <Printer className="w-4 h-4" />
+                                {isDownloading ? 'Printing...' : 'Print PDF'}
+                            </button>
+                        )}
+                        {!activeSheet && (
+                            <button
+                                onClick={() => handleSubmit('Draft')}
+                                disabled={saving}
+                                className="px-5 py-2.5 border border-border bg-background rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-secondary transition-all"
+                            >
+                                <Save className="w-4 h-4" />
+                                Draft
+                            </button>
+                        )}
                         <button
                             onClick={() => handleSubmit('Submitted')}
                             disabled={saving}
                             className="px-6 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-primary/30 hover:opacity-90 transition-all hover:-translate-y-0.5"
                         >
                             <FileText className="w-4 h-4" />
-                            {saving ? 'Processing...' : 'Submit Order'}
+                            {saving ? 'Processing...' : activeSheet ? 'Update Order' : 'Submit Order'}
                         </button>
                     </div>
                 </div>
@@ -403,7 +601,7 @@ export default function CuttingPage() {
 
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Lot No.</label>
-                            <select
+                             <select
                                 suppressHydrationWarning
                                 value={form.lotNo}
                                 onChange={e => {
@@ -427,10 +625,10 @@ export default function CuttingPage() {
                                         setForm({ ...form, lotNo: e.target.value });
                                     }
                                 }}
-                                className="w-full bg-transparent outline-none font-black text-sm cursor-pointer"
+                                className="w-full bg-transparent outline-none font-black text-sm cursor-pointer dark:text-white"
                             >
-                                <option value="">-- Choose Lot --</option>
-                                {availableLots.map(l => <option key={l.lotNo} value={l.lotNo}>{l.lotNo}</option>)}
+                                <option value="" className="bg-card text-foreground transition-all">-- Choose Lot --</option>
+                                {availableLots.map(l => <option key={l.lotNo} value={l.lotNo} className="bg-card text-foreground transition-all">{l.lotNo}</option>)}
                             </select>
                         </div>
 
@@ -567,10 +765,10 @@ export default function CuttingPage() {
                                                 <select
                                                     value={row.size}
                                                     onChange={e => updateRow(idx, 'size', e.target.value)}
-                                                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-xs font-black outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                                                    className="w-full h-9 px-3 bg-background dark:bg-card border border-border rounded-lg text-xs font-black outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer text-foreground"
                                                 >
-                                                    <option value="">-- Size --</option>
-                                                    {availableSizes.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                                                    <option value="" className="bg-card text-foreground">-- Size --</option>
+                                                    {availableSizes.map((s: string) => <option key={s} value={s} className="bg-card text-foreground">{s}</option>)}
                                                 </select>
                                             </td>
 
@@ -655,13 +853,13 @@ export default function CuttingPage() {
                             <div className="flex flex-col gap-1">
                                 <label className="text-[9px] font-black uppercase text-muted/60 tracking-wider">Common Wastage Coeff</label>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center bg-white border border-primary/20 rounded-lg overflow-hidden shadow-sm">
+                                    <div className="flex items-center bg-card border border-primary/20 rounded-lg overflow-hidden shadow-sm">
                                         <input
                                             type="number"
                                             step="any"
                                             value={commonWastage}
                                             onChange={e => applyCommonWastage(e.target.value)}
-                                            className="w-24 h-9 px-3 text-xs font-black outline-none"
+                                            className="w-24 h-9 px-3 text-xs font-black outline-none bg-transparent text-foreground"
                                             placeholder="Value"
                                         />
                                         <div className="flex border-l border-primary/10 bg-secondary/5">
@@ -792,7 +990,7 @@ export default function CuttingPage() {
                     <p className="text-muted text-xs font-bold uppercase tracking-widest mt-1">Management Console / Production History</p>
                 </div>
                 <button
-                    onClick={() => { setView('form'); resetForm(); }}
+                    onClick={() => { setView('form'); resetForm(); setActiveSheet(null); }}
                     className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-[0.15em] hover:opacity-90 transition-all shadow-xl shadow-primary/20 hover:-translate-y-0.5"
                 >
                     <Plus className="w-4 h-4" />
@@ -828,7 +1026,7 @@ export default function CuttingPage() {
                                 <th className="px-6 py-5 text-center">Totals</th>
                                 <th className="px-6 py-5 text-center">Fabric (KG)</th>
                                 <th className="px-6 py-5 text-center">Status</th>
-                                <th className="px-6 py-5 text-right w-20"></th>
+                                <th className="px-6 py-5 text-right w-32"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -845,7 +1043,11 @@ export default function CuttingPage() {
                                     </td>
                                 </tr>
                             ) : filtered.map(sheet => (
-                                <tr key={sheet._id} className="hover:bg-secondary/5 transition-all group cursor-pointer border-l-2 border-l-transparent hover:border-l-primary">
+                                <tr 
+                                    key={sheet._id} 
+                                    onClick={() => handleView(sheet)}
+                                    className="hover:bg-secondary/5 transition-all group cursor-pointer border-l-2 border-l-transparent hover:border-l-primary"
+                                >
                                     <td className="px-6 py-5">
                                         <div className="font-black text-primary text-sm tracking-tight">{sheet.sheetNo}</div>
                                         <div className="text-[10px] font-bold text-muted mt-1 uppercase tracking-wider">{new Date(sheet.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
@@ -881,13 +1083,29 @@ export default function CuttingPage() {
                                             {sheet.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-5 text-right w-20">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(sheet._id); }}
-                                            className="p-2 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all text-muted/30 opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                    <td className="px-6 py-5 text-right w-32">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleView(sheet); setTimeout(handleDownloadPDF, 100); }}
+                                                className="p-2 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all text-muted/30 opacity-100 sm:opacity-0 group-hover:opacity-100"
+                                                title="Print PDF"
+                                            >
+                                                <Printer className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleView(sheet); }}
+                                                className="p-2 hover:bg-amber-50 hover:text-amber-600 rounded-xl transition-all text-muted/30 opacity-100 sm:opacity-0 group-hover:opacity-100"
+                                                title="Edit Sheet"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(sheet._id); }}
+                                                className="p-2 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all text-muted/30 opacity-100 sm:opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

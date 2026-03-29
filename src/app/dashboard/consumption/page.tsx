@@ -19,6 +19,7 @@ export default function ConsumptionPage() {
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const [products, setProducts] = useState<{ _id: string; name: string }[]>([]);
+    const [materials, setMaterials] = useState<any[]>([]);
 
     // Form state
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function ConsumptionPage() {
     const [renameVal, setRenameVal] = useState('');
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => { fetchConsumptions(); fetchProducts(); }, []);
+    useEffect(() => { fetchConsumptions(); fetchProducts(); fetchMaterials(); }, []);
 
     const fetchConsumptions = async () => {
         setLoading(true);
@@ -46,6 +47,13 @@ export default function ConsumptionPage() {
         try {
             const res = await fetch('/api/masters/products');
             if (res.ok) setProducts(await res.json());
+        } catch { /* silent */ }
+    };
+
+    const fetchMaterials = async () => {
+        try {
+            const res = await fetch('/api/masters/materials');
+            if (res.ok) setMaterials(await res.json());
         } catch { /* silent */ }
     };
 
@@ -245,14 +253,17 @@ export default function ConsumptionPage() {
                         </div>
                         {/* Add Component */}
                         <div className="flex items-center gap-1 bg-background border border-border rounded-lg overflow-hidden">
-                            <input
-                                type="text"
+                            <select
                                 value={newCompName}
                                 onChange={e => setNewCompName(e.target.value)}
-                                placeholder="Component (e.g. Lycra)"
-                                className="w-44 px-3 py-1.5 bg-transparent outline-none text-sm font-bold"
-                                onKeyDown={e => e.key === 'Enter' && addComponent()}
-                            />
+                                className="w-44 px-3 py-1.5 bg-transparent outline-none text-sm font-bold appearance-none cursor-pointer"
+                            >
+                                <option value="">Select Material...</option>
+                                <option value="Wastage">Wastage (Standard)</option>
+                                {materials.map(m => (
+                                    <option key={m._id} value={m.name}>{m.name} {m.code ? `(${m.code})` : ''}</option>
+                                ))}
+                            </select>
                             <button onClick={addComponent} className="px-3 py-1.5 bg-primary/10 text-primary font-bold text-xs hover:bg-primary/20 border-l border-border transition-colors">+ Col</button>
                         </div>
                         <span className="ml-auto text-[10px] text-muted font-bold uppercase tracking-wider">All values in kg/{unit === 'Dozen' ? 'doz' : 'pc'}</span>

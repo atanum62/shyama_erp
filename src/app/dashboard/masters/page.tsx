@@ -24,8 +24,9 @@ import {
 } from 'lucide-react';
 import ConsumptionPanel from '../consumption/page';
 import DiameterMappingPanel from '../diameter-mapping/page';
+import BOMPage from '../bom/page';
 
-type Tab = 'clients' | 'stitchers' | 'dyeing-houses' | 'suppliers' | 'materials' | 'colors' | 'products' | 'consumption' | 'diameter-mapping';
+type Tab = 'clients' | 'stitchers' | 'dyeing-houses' | 'materials' | 'consumption' | 'bom' | 'colors' | 'products' | 'diameter-mapping';
 
 export default function MastersPage() {
     const [activeTab, setActiveTab] = useState<Tab>('clients');
@@ -35,6 +36,8 @@ export default function MastersPage() {
     const [editingItem, setEditingItem] = useState<any | null>(null);
     const [viewingRates, setViewingRates] = useState<any | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [productModalTab, setProductModalTab] = useState<'BASIC INFO' | 'BOM' | 'GARMENT SPECS' | 'INVENTORY' | 'PRICING' | 'QUALITY' | 'STATUS'>('BASIC INFO');
+    const [materialsList, setMaterialsList] = useState<any[]>([]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -60,6 +63,7 @@ export default function MastersPage() {
             branchName: '',
         },
         stitchingRates: [] as { productId: string; category: string; rate: number }[],
+        bom: [] as { material: string; quantity: number | string; unit: string; wastage: number | string }[],
     });
 
     const [productCategories, setProductCategories] = useState<{ id: string, name: string }[]>([]);
@@ -68,11 +72,11 @@ export default function MastersPage() {
         'clients': { label: 'Clients ', icon: Building2, apiType: 'Client' },
         'stitchers': { label: 'Stitchers', icon: UserCircle, apiType: 'Stitcher' },
         'dyeing-houses': { label: 'Dyeing Houses', icon: MapPin, apiType: 'DyeingHouse' },
-        'suppliers': { label: 'Suppliers', icon: Users, apiType: 'Supplier' },
-        'materials': { label: 'Materials (BOM)', icon: Package },
+        'materials': { label: 'Materials', icon: Package },
+        'consumption': { label: 'Consumption Master', icon: FileText },
+        'bom': { label: 'Bill of Materials', icon: ClipboardList },
         'colors': { label: 'Colors', icon: Palette },
         'products': { label: 'Products', icon: Package },
-        'consumption': { label: 'Consumption', icon: FileText },
         'diameter-mapping': { label: 'Dia → Size', icon: Ruler },
     };
 
@@ -113,7 +117,20 @@ export default function MastersPage() {
         if (activeTab === 'stitchers') {
             fetchProductCategories();
         }
+        if (activeTab === 'products') {
+            fetchMaterialsList();
+        }
     }, [activeTab]);
+
+    const fetchMaterialsList = async () => {
+        try {
+            const res = await fetch('/api/masters/materials');
+            const json = await res.json();
+            if (Array.isArray(json)) setMaterialsList(json);
+        } catch (err) {
+            console.error('Error fetching materials:', err);
+        }
+    };
 
     const fetchProductCategories = async () => {
         try {
@@ -192,7 +209,8 @@ export default function MastersPage() {
                             description: formData.description,
                             pricePerDozen: formData.pricePerDozen,
                             pricePerPiece: formData.pricePerPiece,
-                            image: formData.image
+                            image: formData.image,
+                            bom: formData.bom
                         }
                         : {
                             _id: editingItem?._id,
@@ -266,6 +284,7 @@ export default function MastersPage() {
                 pricePerPiece: 0,
                 bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
                 stitchingRates: [],
+                bom: [],
             });
         } else if (activeTab === 'colors') {
             setFormData({
@@ -284,6 +303,7 @@ export default function MastersPage() {
                 pricePerPiece: 0,
                 bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
                 stitchingRates: [],
+                bom: [],
             });
         } else if (activeTab === 'products') {
             setFormData({
@@ -302,6 +322,7 @@ export default function MastersPage() {
                 image: item.image || '',
                 bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
                 stitchingRates: [],
+                bom: item.bom || [],
             });
         } else {
             setFormData({
@@ -323,8 +344,10 @@ export default function MastersPage() {
                     const existing = (item.stitchingRates || []).find((r: any) => r.productId === cat.id || r.category === cat.name);
                     return { productId: cat.id, category: cat.name, rate: existing ? existing.rate : 0 };
                 }),
+                bom: [],
             });
         }
+        setProductModalTab('BASIC INFO');
         setIsModalOpen(true);
     };
 
@@ -346,7 +369,8 @@ export default function MastersPage() {
             pricePerPiece: 0,
             image: '',
             bankDetails: { bankName: '', accountNumber: '', ifscCode: '', branchName: '' },
-            stitchingRates: []
+            stitchingRates: [],
+            bom: []
         });
     };
 
@@ -360,7 +384,7 @@ export default function MastersPage() {
                     </h1>
                     <p className="text-muted text-sm mt-1">Configure your business entities, quality standards and BOM.</p>
                 </div>
-                {activeTab !== 'consumption' && activeTab !== 'diameter-mapping' && (
+                {activeTab !== 'bom' && activeTab !== 'consumption' && activeTab !== 'diameter-mapping' && (
                     <button
                         suppressHydrationWarning
                         onClick={() => setIsModalOpen(true)}
@@ -394,7 +418,7 @@ export default function MastersPage() {
             </div>
 
             {/* List / Table - hidden for custom tabs */}
-            {activeTab !== 'consumption' && activeTab !== 'diameter-mapping' && (
+            {activeTab !== 'bom' && activeTab !== 'consumption' && activeTab !== 'diameter-mapping' && (
                 <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden min-h-[400px]">
                     <div className="p-4 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/50">
                         <div className="relative w-full sm:w-80">
@@ -470,6 +494,11 @@ export default function MastersPage() {
                                                     )}
                                                     <div>
                                                         <div className="font-bold text-foreground">{item.name}</div>
+                                                        {activeTab === 'products' && item.bom && item.bom.length > 0 && (
+                                                            <div className="flex items-center gap-1 mt-0.5">
+                                                                <span className="text-[9px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase tracking-tighter">BOM: {item.bom.length} items</span>
+                                                            </div>
+                                                        )}
                                                         {activeTab !== 'products' && (
                                                             <div className="text-[10px] text-muted font-mono uppercase tracking-tighter">{item.code}</div>
                                                         )}
@@ -570,6 +599,13 @@ export default function MastersPage() {
                 </div>
             )}
 
+            {/* BOM Tab */}
+            {activeTab === 'bom' && (
+                <div className="mt-2">
+                    <BOMPage />
+                </div>
+            )}
+
             {/* Diameter Mapping Tab */}
             {activeTab === 'diameter-mapping' && (
                 <div className="mt-2">
@@ -652,6 +688,7 @@ export default function MastersPage() {
                                             >
                                                 <option>Fabric</option>
                                                 <option>Accessory</option>
+                                                <option>Packaging</option>
                                             </select>
                                         </div>
                                         <div className="space-y-2">
@@ -955,21 +992,65 @@ export default function MastersPage() {
                                     </>
                                 )}
 
-                                <div className="pt-4 flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={closeModal}
-                                        className="flex-1 px-4 py-3 border border-border rounded-xl font-bold text-muted hover:bg-secondary transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-[2] px-4 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
-                                    >
-                                        {editingItem ? 'Update Entity' : 'Save Entity'}
-                                    </button>
-                                </div>
+                                {activeTab === 'products' ? (
+                                    <div className="pt-6 flex items-center justify-between border-t border-border/50 mt-6">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const tabs = ['BASIC INFO', 'BOM', 'GARMENT SPECS', 'INVENTORY', 'PRICING', 'QUALITY', 'STATUS'];
+                                                    const idx = tabs.indexOf(productModalTab);
+                                                    if (idx > 0) setProductModalTab(tabs[idx - 1] as any);
+                                                }}
+                                                className="px-4 py-2 text-sm font-bold text-foreground hover:bg-secondary/50 rounded-lg transition-colors flex items-center"
+                                            >
+                                                &larr; Prev
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const tabs = ['BASIC INFO', 'BOM', 'GARMENT SPECS', 'INVENTORY', 'PRICING', 'QUALITY', 'STATUS'];
+                                                    const idx = tabs.indexOf(productModalTab);
+                                                    if (idx < tabs.length - 1) setProductModalTab(tabs[idx + 1] as any);
+                                                }}
+                                                className="px-4 py-2 text-sm font-bold text-foreground hover:bg-secondary/50 rounded-lg transition-colors flex items-center"
+                                            >
+                                                Next &rarr;
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={closeModal}
+                                                className="px-5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary/50 rounded-xl transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg focus:ring-4 focus:ring-indigo-600/20 hover:bg-indigo-700 transition-all"
+                                            >
+                                                {editingItem ? 'Update Product' : 'Save Product'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="pt-4 flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={closeModal}
+                                            className="flex-1 px-4 py-3 border border-border rounded-xl font-bold text-muted hover:bg-secondary transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="flex-[2] px-4 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+                                        >
+                                            {editingItem ? 'Update Entity' : 'Save Entity'}
+                                        </button>
+                                    </div>
+                                )}
                             </form>
                         </div>
                     </div>

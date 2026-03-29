@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export enum MaterialCategory {
     FABRIC = 'Fabric',
     ACCESSORY = 'Accessory',
+    PACKAGING = 'Packaging',
 }
 
 export interface IMaterial extends Document {

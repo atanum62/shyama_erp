@@ -48,6 +48,39 @@ export async function POST(request: Request) {
     }
 }
 
+export async function PUT(request: Request) {
+    try {
+        await dbConnect();
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+        const body = await request.json();
+
+        // Calculate row totals
+        if (body.rows && Array.isArray(body.rows)) {
+            let grandDoz = 0, grandPcs = 0, grandWeight = 0, grandWast = 0;
+
+            body.rows.forEach((row: any) => {
+                grandDoz += Number(row.doz) || 0;
+                grandPcs += Number(row.pcs) || 0;
+                grandWeight += Number(row.totalRowWeight) || 0;
+                grandWast += Number(row.wastage) || 0;
+            });
+
+            body.grandTotalDozens = grandDoz;
+            body.grandTotalPieces = grandPcs;
+            body.totalFabricUsedKg = grandWeight;
+            body.totalWastageKg = grandWast;
+        }
+
+        const updated = await CuttingSheet.findByIdAndUpdate(id, body, { new: true });
+        return NextResponse.json(updated);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
 export async function DELETE(request: Request) {
     try {
         await dbConnect();
