@@ -19,7 +19,8 @@ import {
     RotateCcw,
     ListChecks,
     Settings,
-    FileText
+    FileText,
+    Bell
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -63,6 +64,7 @@ export function Sidebar() {
         { name: 'Delivery', href: '/dashboard/delivery', icon: Truck },
         { name: 'Accounting', href: '/dashboard/accounting', icon: IndianRupee },
         { name: 'Reports', href: '/dashboard/reports', icon: FilePieChart },
+        { name: 'Notification', href: '/dashboard/notifications', icon: Bell },
         { name: 'System', href: '/dashboard/system', icon: Settings },
     ];
 

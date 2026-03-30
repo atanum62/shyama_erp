@@ -4,11 +4,57 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Bell } from 'lucide-react';
+import Link from 'next/link';
 
 export function DashboardHeader() {
     const { data: session } = useSession();
     const [isVisible, setIsVisible] = useState(true);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const lastScrollY = useRef(0);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Mock Notifications
+    const [notifications] = useState([
+        {
+            id: 1,
+            title: 'Inward Lot Approved',
+            message: 'Lot #12345 (Maroon) has been fully approved by QC.',
+            time: '5 mins ago',
+            type: 'success',
+            unread: true
+        },
+        {
+            id: 2,
+            title: 'Low Stock Alert',
+            message: 'Interlock 14" DIA (Yellow) is below 50KG threshold.',
+            time: '2 hours ago',
+            type: 'warning',
+            unread: true
+        },
+        {
+            id: 3,
+            title: 'Reweight Correction',
+            message: 'Weight mismatch detected in Lot #7435 (Navy). Correction required.',
+            time: 'Yesterday',
+            type: 'error',
+            unread: false
+        }
+    ]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsNotificationOpen(false);
+            }
+        };
+
+        if (isNotificationOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isNotificationOpen]);
 
     useEffect(() => {
         const mainElement = document.getElementById('dashboard-main');
@@ -49,11 +95,70 @@ export function DashboardHeader() {
                 </h1>
             </div>
 
-            <div className="flex items-center gap-6 h-full">
-                <button className="relative p-2 text-muted hover:text-foreground transition-colors rounded-full hover:bg-muted/10">
+            <div className="flex items-center gap-6 h-full relative" ref={dropdownRef}>
+                <button
+                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                    className={`relative p-2 transition-colors rounded-full ${isNotificationOpen ? 'bg-primary/20 text-primary' : 'text-muted hover:text-foreground hover:bg-muted/10'}`}
+                >
                     <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+                    {notifications.some(n => n.unread) && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+                    )}
                 </button>
+
+                {/* Notification Dropdown */}
+                {isNotificationOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                        <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Recent Mails</h3>
+                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                {notifications.filter(n => n.unread).length} New
+                            </span>
+                        </div>
+                        <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                            {notifications.length === 0 ? (
+                                <div className="p-8 text-center text-muted text-xs font-bold italic">
+                                    No recent notifications.
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border">
+                                    {notifications.map((n) => (
+                                        <div
+                                            key={n.id}
+                                            className={`p-4 hover:bg-secondary/20 transition-colors cursor-pointer group ${n.unread ? 'bg-primary/[0.03]' : ''}`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${n.type === 'success' ? 'bg-emerald-500' :
+                                                        n.type === 'warning' ? 'bg-amber-500' :
+                                                            'bg-red-500'
+                                                    }`} />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-xs font-black uppercase tracking-tight ${n.unread ? 'text-foreground' : 'text-muted'}`}>
+                                                        {n.title}
+                                                    </p>
+                                                    <p className="text-[11px] text-muted line-clamp-2 mt-0.5 leading-relaxed font-medium">
+                                                        {n.message}
+                                                    </p>
+                                                    <p className="text-[9px] font-bold text-primary/60 mt-2 flex items-center gap-1.5 uppercase tracking-widest">
+                                                        {n.time}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <Link
+                            href="/dashboard/notifications"
+                            onClick={() => setIsNotificationOpen(false)}
+                            className="block p-3 text-center text-[10px] font-black uppercase tracking-[0.2em] bg-secondary/50 text-muted hover:text-primary transition-all border-t border-border"
+                        >
+                            View All History
+                        </Link>
+                    </div>
+                )}
+
                 <ThemeToggle />
 
                 <div className="flex items-center gap-4 border-l border-border pl-6 h-8">
