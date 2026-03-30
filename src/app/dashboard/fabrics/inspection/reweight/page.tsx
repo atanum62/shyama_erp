@@ -391,7 +391,7 @@ export default function FabricReweightPage() {
             <style jsx global>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
                 @media print {
                     .pdf-only { display: flex !important; }
@@ -558,12 +558,12 @@ export default function FabricReweightPage() {
                                 </td></tr>
                             ) : filteredInwards.map((inward) => (
                                 <React.Fragment key={inward._id}>
-                                    <tr className="bg-secondary/5 group border-t-8 border-white first:border-0 hover:bg-secondary/10 transition-colors">
+                                    <tr className="bg-secondary/5 group border-t-8 border-background first:border-0 hover:bg-secondary/10 transition-colors">
                                         <td className="px-6 py-6">
                                             <div className="flex items-center gap-4">
                                                 <button
                                                     onClick={() => setExpandedLots(prev => ({ ...prev, [inward._id]: !prev[inward._id] }))}
-                                                    className={`p-2 rounded-xl transition-all shadow-sm ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-white border border-border text-muted hover:text-primary hover:border-primary/20'}`}
+                                                    className={`p-2 rounded-xl transition-all shadow-sm ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-secondary border border-border text-muted hover:text-primary hover:border-primary/20'}`}
                                                 >
                                                     <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${expandedLots[inward._id] ? '' : '-rotate-90'}`} />
                                                 </button>
@@ -622,7 +622,7 @@ export default function FabricReweightPage() {
                                                                 );
                                                                 openBulkModal(inward._id, items);
                                                             }}
-                                                            className="px-4 py-2 bg-white text-primary border-2 border-primary/20 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/5 transition-all"
+                                                            className="px-4 py-2 bg-secondary/20 text-primary border-2 border-primary/20 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/5 transition-all"
                                                         >
                                                             Adjust Entire Lot
                                                         </button>
@@ -642,7 +642,7 @@ export default function FabricReweightPage() {
                                         </td>
                                     </tr>
                                     {expandedLots[inward._id] && (
-                                        <tr className="bg-white/40">
+                                        <tr className="bg-secondary/20">
                                             <td colSpan={4} className="px-6 py-8">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                     {Object.entries(
@@ -668,7 +668,7 @@ export default function FabricReweightPage() {
                                                                     if (activeTab === 'pending' && (e.target as HTMLElement).closest('button')) return;
                                                                     if (activeTab === 'pending') toggleColorSelection(inward._id, colorName);
                                                                 }}
-                                                                className={`bg-white border-2 border-l-[6px] rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected && activeTab === 'pending' ? 'border-primary ring-4 ring-primary/10' : 'border-gray-50 hover:border-primary/20'
+                                                                className={`bg-card border-2 border-l-[6px] rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected && activeTab === 'pending' ? 'border-primary ring-4 ring-primary/10' : 'border-border hover:border-primary/20'
                                                                     }`}
                                                                 style={{ borderLeftColor: colorName.toLowerCase() }}
                                                             >
@@ -680,11 +680,11 @@ export default function FabricReweightPage() {
                                                                     </div>
                                                                 )}
 
-                                                                <div className="p-4 border-b border-gray-50 bg-gray-50/40 flex items-center justify-between">
+                                                                <div className="p-4 border-b border-border bg-secondary/40 flex items-center justify-between">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-5 h-5 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: colorName.toLowerCase() }} />
                                                                         <div>
-                                                                            <div className="text-[11px] font-black text-gray-900 uppercase leading-none">{colorName}</div>
+                                                                            <div className="text-[11px] font-black text-foreground uppercase leading-none">{colorName}</div>
                                                                             <div className="text-[9px] font-bold text-muted mt-1">{group.items.length} VARIETIES</div>
                                                                         </div>
                                                                     </div>
@@ -741,9 +741,9 @@ export default function FabricReweightPage() {
                                                                     {group.items.map((item: any, i: number) => {
                                                                         const sessionUpd = sessionUpdates[sessionKey]?.find(u => u.itemId === item._id);
                                                                         return (
-                                                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all group/item ${sessionUpd ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 hover:bg-white border-transparent hover:border-gray-100'}`}>
+                                                                            <div key={i} className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all group/item ${sessionUpd ? 'bg-orange-600/10 border-orange-500/30' : 'bg-secondary/30 hover:bg-secondary/50 border-border hover:border-primary/20'}`}>
                                                                                 <div className="flex items-center justify-between">
-                                                                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{item.materialId?.name || 'Fabric'}</div>
+                                                                                    <div className="text-[10px] font-black text-muted uppercase tracking-widest leading-none">{item.materialId?.name || 'Fabric'}</div>
                                                                                     {sessionUpd ? (
                                                                                         <div className="text-[8px] font-black text-orange-600 bg-white border border-orange-200 px-2 py-0.5 rounded italic flex items-center gap-1">
                                                                                             <CheckCircle2 className="w-2.5 h-2.5" /> READY TO PUSH
@@ -760,8 +760,8 @@ export default function FabricReweightPage() {
                                                                                 </div>
                                                                                 <div className="flex items-center justify-between">
                                                                                     <div className="flex items-center gap-2">
-                                                                                        <span className="text-xs font-black text-gray-800">{item.diameter}" DIA</span>
-                                                                                        <span className="text-xs font-bold text-gray-300">|</span>
+                                                                                        <span className="text-xs font-black text-foreground">{item.diameter}" DIA</span>
+                                                                                        <span className="text-xs font-bold text-muted">|</span>
                                                                                         <span className="text-xs font-black text-blue-600">{item.pcs} PCS</span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-3">
@@ -869,36 +869,36 @@ export default function FabricReweightPage() {
 
                         <div className="flex-1 overflow-y-auto p-4 sm:p-10 space-y-8 custom-scrollbar bg-gray-50/30" id="item-analysis-report">
                             {/* Report Header for PDF */}
-                            <div className="hidden pdf-only flex items-center justify-between border-b-[3px] border-black pb-8 mb-10">
+                            <div className="hidden pdf-only flex items-center justify-between border-b-[3px] border-black pb-8 mb-10 text-black">
                                 <div>
                                     <h1 className="text-4xl font-black uppercase tracking-tighter">FABRIC ANALYSIS REPORT</h1>
-                                    <p className="text-xs font-bold text-gray-500 tracking-[0.4em] uppercase mt-2">Shyama ERP • {viewingSpecificColor.color} Variety</p>
+                                    <p className="text-xs font-bold text-black/50 tracking-[0.4em] uppercase mt-2">Shyama ERP • {viewingSpecificColor.color} Variety</p>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-sm font-black uppercase text-gray-400">Audit Reference</div>
+                                    <div className="text-sm font-black uppercase text-black/40">Audit Reference</div>
                                     <div className="text-xl font-bold">LOT-{viewingSpecificColor.lotNo}</div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="bg-white p-6 rounded-3xl border border-border shadow-sm space-y-1">
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Dyeing House</p>
-                                    <p className="text-xl font-black text-foreground">{inwards.find(inw => inw._id === viewingSpecificColor.inwardId)?.partyId?.name || 'N/A'}</p>
+                                    <p className="text-[10px] font-black text-black/60 uppercase tracking-widest">Dyeing House</p>
+                                    <p className="text-xl font-black text-black">{inwards.find(inw => inw._id === viewingSpecificColor.inwardId)?.partyId?.name || 'N/A'}</p>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl border border-border shadow-sm space-y-1">
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Consignment</p>
-                                    <p className="text-xl font-black text-foreground">CH: {inwards.find(inw => inw._id === viewingSpecificColor.inwardId)?.challanNo || 'N/A'}</p>
+                                    <p className="text-[10px] font-black text-black/60 uppercase tracking-widest">Consignment</p>
+                                    <p className="text-xl font-black text-black">CH: {inwards.find(inw => inw._id === viewingSpecificColor.inwardId)?.challanNo || 'N/A'}</p>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl border border-border shadow-sm space-y-1">
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Audit Date</p>
-                                    <p className="text-xl font-black text-foreground">{new Date().toLocaleDateString()}</p>
+                                    <p className="text-[10px] font-black text-black/60 uppercase tracking-widest">Audit Date</p>
+                                    <p className="text-xl font-black text-black">{new Date().toLocaleDateString()}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-6">
                                 <div className="flex items-center gap-3 px-2">
                                     <FileText className="w-5 h-5 text-primary" />
-                                    <h4 className="text-lg font-black uppercase tracking-tight">Variety Comparison</h4>
+                                    <h4 className="text-lg font-black uppercase tracking-tight text-black">Variety Comparison</h4>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse border-[2px] border-black min-w-[600px] bg-white">
@@ -911,7 +911,7 @@ export default function FabricReweightPage() {
                                                 <th className="p-4">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-[11px] font-bold uppercase">
+                                        <tbody className="text-[11px] font-bold uppercase text-black">
                                             {viewingSpecificColor.items.map((item: any, i: number) => {
                                                 const sessionKey = `${viewingSpecificColor.inwardId}-${viewingSpecificColor.color}`;
                                                 const sessionUpd = sessionUpdates[sessionKey]?.find(u => u.itemId === item._id);
@@ -926,7 +926,7 @@ export default function FabricReweightPage() {
                                                 const hasChanged = isProposed || isPersisted;
 
                                                 return (
-                                                    <tr key={i} className={`border-b-[2px] border-black ${!hasChanged ? 'bg-gray-50/50 opacity-60' : isProposed ? 'bg-orange-50/30' : ''}`}>
+                                                    <tr key={i} className={`border-b-[2px] border-black ${!hasChanged ? 'bg-gray-50/50 text-black/40' : isProposed ? 'bg-orange-50/30' : ''}`}>
                                                         <td className="p-4 border-r border-black">{item.materialId?.name || 'Fabric'} - {item.diameter}" DIA ({item.pcs} PCS)</td>
                                                         <td className="p-4 border-r border-black">{Number(originalWeight).toFixed(2)}</td>
                                                         <td className={`p-4 border-r border-black font-black ${diff > 0 ? 'text-blue-600' : diff < 0 ? 'text-red-500' : 'text-gray-400'}`}>
@@ -1011,29 +1011,29 @@ export default function FabricReweightPage() {
 
                         <div className="flex-1 overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-8 custom-scrollbar bg-gray-50/30" id="lot-history-report">
                             {/* Report Header for PDF */}
-                            <div className="hidden pdf-only flex items-center justify-between border-b-[3px] border-black pb-8 mb-10">
+                            <div className="hidden pdf-only flex items-center justify-between border-b-[3px] border-black pb-8 mb-10 text-black">
                                 <div>
                                     <h1 className="text-4xl font-black uppercase tracking-tighter">BATCH REWEIGHT HISTORY</h1>
-                                    <p className="text-xs font-bold text-gray-500 tracking-[0.4em] uppercase mt-2">Shyama ERP • Quality Assurance</p>
+                                    <p className="text-xs font-bold text-black/50 tracking-[0.4em] uppercase mt-2">Shyama ERP • Quality Assurance</p>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-sm font-black uppercase text-gray-400">Audit Reference</div>
+                                    <div className="text-sm font-black uppercase text-black/40">Audit Reference</div>
                                     <div className="text-xl font-bold">LOT-{viewingLotHistory.lotNo}</div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="bg-white p-6 rounded-3xl border border-border shadow-sm space-y-1">
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Dyeing House</p>
-                                    <p className="text-xl font-black text-foreground">{viewingLotHistory.partyId?.name || 'N/A'}</p>
+                                    <p className="text-[10px] font-black text-black/60 uppercase tracking-widest">Dyeing House</p>
+                                    <p className="text-xl font-black text-black">{viewingLotHistory.partyId?.name || 'N/A'}</p>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl border border-border shadow-sm space-y-1">
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Consignment</p>
-                                    <p className="text-xl font-black text-foreground">CH: {viewingLotHistory.challanNo}</p>
+                                    <p className="text-[10px] font-black text-black/60 uppercase tracking-widest">Consignment</p>
+                                    <p className="text-xl font-black text-black">CH: {viewingLotHistory.challanNo}</p>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl border border-border shadow-sm space-y-1">
-                                    <p className="text-[10px] font-black text-muted uppercase tracking-widest">Date Received</p>
-                                    <p className="text-xl font-black text-foreground">{new Date(viewingLotHistory.inwardDate).toLocaleDateString()}</p>
+                                    <p className="text-[10px] font-black text-black/60 uppercase tracking-widest">Date Received</p>
+                                    <p className="text-xl font-black text-black">{new Date(viewingLotHistory.inwardDate).toLocaleDateString()}</p>
                                 </div>
                             </div>
 
@@ -1088,7 +1088,7 @@ export default function FabricReweightPage() {
                             <div className="space-y-6">
                                 <div className="flex items-center gap-3 px-2">
                                     <FileText className="w-5 h-5 text-primary" />
-                                    <h4 className="text-lg font-black uppercase tracking-tight">Final Batch Comparison</h4>
+                                    <h4 className="text-lg font-black uppercase tracking-tight text-black">Final Batch Comparison</h4>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse border-[2px] border-black min-w-[600px] bg-white">
@@ -1101,7 +1101,7 @@ export default function FabricReweightPage() {
                                                 <th className="p-4">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-[11px] font-bold uppercase">
+                                        <tbody className="text-[11px] font-bold uppercase text-black">
                                             {viewingLotHistory.items.map((item: any, i: number) => {
                                                 const sessionKey = `${viewingLotHistory._id}-${item.color}`;
                                                 const sessionUpd = sessionUpdates[sessionKey]?.find(u => u.itemId === item._id);
@@ -1116,7 +1116,7 @@ export default function FabricReweightPage() {
                                                 const hasChanged = isProposed || isPersisted;
 
                                                 return (
-                                                    <tr key={i} className={`border-b-[2px] border-black ${!hasChanged ? 'bg-gray-50/50 opacity-60' : isProposed ? 'bg-orange-50/40' : ''}`}>
+                                                    <tr key={i} className={`border-b-[2px] border-black ${!hasChanged ? 'bg-gray-50/50 text-black/40' : isProposed ? 'bg-orange-50/40' : ''}`}>
                                                         <td className="p-4 border-r border-black">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color.toLowerCase() }} />
@@ -1131,7 +1131,7 @@ export default function FabricReweightPage() {
                                                             {Number(currentWeight).toFixed(2)}
                                                         </td>
                                                         <td className="p-4">
-                                                            <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest ${isProposed ? 'bg-orange-600 text-white' : isPersisted ? 'bg-blue-600 text-white' : 'bg-gray-100 text-muted'}`}>
+                                                            <span className={`px-2 py-1 rounded text-[8px] font-black tracking-widest ${isProposed ? 'bg-orange-600 text-white' : isPersisted ? 'bg-blue-600 text-white' : 'bg-gray-100 text-white'}`}>
                                                                 {isProposed ? 'PROPOSED' : isPersisted ? 'CORRECTED' : 'VAL-OK'}
                                                             </span>
                                                         </td>
@@ -1147,7 +1147,7 @@ export default function FabricReweightPage() {
                             <div className="space-y-6">
                                 <div className="flex items-center gap-3 px-2">
                                     <FileText className="w-5 h-5 text-primary" />
-                                    <h4 className="text-lg font-black uppercase tracking-tight">Diameter-wise Breakdown</h4>
+                                    <h4 className="text-lg font-black uppercase tracking-tight text-black">Diameter-wise Breakdown</h4>
                                 </div>
                                 {(() => {
                                     // Group items by diameter
@@ -1235,7 +1235,7 @@ export default function FabricReweightPage() {
                                                             <th className="px-6 py-3">Status</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="text-[11px] font-bold uppercase divide-y divide-gray-100">
+                                                    <tbody className="text-[11px] font-bold uppercase divide-y divide-gray-100 text-black">
                                                         {rows.map((item: any, idx: number) => {
                                                             const sessionKey = `${viewingLotHistory._id}-${item.color}`;
                                                             const sessionUpd = sessionUpdates[sessionKey]?.find(u => u.itemId === item._id);
@@ -1250,7 +1250,7 @@ export default function FabricReweightPage() {
                                                             const hasChanged = isProposed || isPersisted;
 
                                                             return (
-                                                                <tr key={idx} className={`${!hasChanged ? 'opacity-50' : isProposed ? 'bg-orange-50/40' : ''}`}>
+                                                                <tr key={idx} className={`${!hasChanged ? 'text-black/40' : isProposed ? 'bg-orange-50/40' : ''}`}>
                                                                     <td className="px-6 py-4 border-r border-gray-100">
                                                                         <div className="flex items-center gap-2">
                                                                             <div className="w-3 h-3 rounded-full border border-white shadow-sm flex-shrink-0" style={{ backgroundColor: item.color.toLowerCase() }} />

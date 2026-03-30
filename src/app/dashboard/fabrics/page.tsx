@@ -1477,7 +1477,7 @@ export default function InwardPage() {
                                 </button>
                             </div>
 
-                            <div id="printable-report" className="flex-1 overflow-y-auto p-12 space-y-12 bg-white text-black max-w-[210mm] mx-auto w-full">
+                            <div id="printable-report" className="flex-1 overflow-y-auto p-12 space-y-12 bg-slate-950 text-white max-w-[210mm] mx-auto w-full">
                                 {/* Company Header */}
                                 <div className="flex justify-between items-start border-b-2 border-black pb-8">
                                     <div className="space-y-2">
@@ -1496,7 +1496,7 @@ export default function InwardPage() {
                                 </div>
 
                                 {/* Dyeing House & Challan Details */}
-                                <div className="grid grid-cols-3 gap-12 py-8 bg-gray-50/50 rounded-xl px-8 border border-gray-100">
+                                <div className="grid grid-cols-3 gap-12 py-8 bg-orange-500/10 rounded-xl px-8 border border-orange-500/20">
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Dyeing House Details</p>
                                         <p className="text-xl font-black text-black">{viewingInward.partyId?.name || 'Unknown supplier'}</p>
@@ -1528,7 +1528,7 @@ export default function InwardPage() {
                                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
-                                                <tr className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-tighter border-b border-gray-200">
+                                                <tr className="bg-orange-500/20 text-[10px] font-black text-orange-200 uppercase tracking-tighter border-b border-orange-500/30">
                                                     <th className="px-6 py-4">#</th>
                                                     <th className="px-6 py-4">Fabric Details</th>
                                                     <th className="px-6 py-4 text-center">Dia Size</th>
@@ -1550,7 +1550,7 @@ export default function InwardPage() {
 
                                                     return (
                                                         <React.Fragment key={color}>
-                                                            <tr className="bg-gray-50/50">
+                                                            <tr className="bg-orange-500/10">
                                                                 <td colSpan={5} className="px-6 py-3">
                                                                     <div className="flex items-center gap-2">
                                                                         <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: colors.find(c => c.name === color)?.hexCode || color }} />
@@ -1570,7 +1570,7 @@ export default function InwardPage() {
                                                                     <td className="px-6 py-4 text-right font-black text-black">{item.quantity} KG</td>
                                                                 </tr>
                                                             ))}
-                                                            <tr className="bg-gray-50/30 border-b-2 border-gray-100">
+                                                            <tr className="bg-orange-500/5 border-b-2 border-orange-500/10">
                                                                 <td colSpan={3} className="px-6 py-3 text-[10px] font-black text-gray-400 text-right uppercase">Subtotal {color}</td>
                                                                 <td className="px-6 py-3 text-center font-black text-xs">{subTotalPcs} PCS</td>
                                                                 <td className="px-6 py-3 text-right font-black text-xs text-primary">{subTotalQty.toFixed(2)} KG</td>
@@ -1591,7 +1591,7 @@ export default function InwardPage() {
                                 </div>
 
                                 {/* Enhanced Fabric Summary Section */}
-                                <div className="space-y-8 page-break-inside-avoid shadow-sm border border-gray-100 rounded-2xl p-8 bg-gray-50/10">
+                                <div className="space-y-8 page-break-inside-avoid shadow-sm border border-orange-500/10 rounded-2xl p-8 bg-orange-500/5">
                                     <div className="border-b-2 border-primary/20 pb-2 mb-6">
                                         <p className="text-[10px] font-black uppercase text-primary tracking-widest">Fabric Production Summary (DIA | PCS | KG)</p>
                                     </div>

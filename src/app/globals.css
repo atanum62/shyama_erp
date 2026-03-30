@@ -3,41 +3,36 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
-  /* Light Whitish Blue */
-  --foreground: #334155;
-  /* Slate 700 */
-  --primary: #f97316;
-  /* Bright Orange */
-  --primary-foreground: #ffffff;
-  --secondary: #fff7ed;
-  /* Light Whitish Orange */
-  --accent: #e0f2fe;
-  /* Very Light Blue */
-  --muted: #64748b;
-  /* Slate 500 */
-  --border: #cbd5e1;
-  /* Slate 300 */
-  --card: #ffffff;
-  --card-foreground: #334155;
-}
-
-.dark {
   --background: #0f172a;
   /* Dark Blue/Slate */
   --foreground: #f1f5f9;
   /* Near White */
-  --primary: #fb923c;
-  /* Slightly lighter Orange */
+  --primary: #f97316;
+  /* Bright Orange */
   --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  /* Darker Slate */
+  --secondary: #ffedd5;
+  /* Light Orange fallback */
   --accent: #1e40af;
   /* Deep Blue */
-  --muted: #94a3b8;
-  /* Mid Slate */
+  --muted: #cbd5e1;
+  /* Light Slate (Was Grey) */
   --border: #334155;
   /* Darker Border */
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --primary: #ff4d00;
+  /* Perfectly Matched Vibrant Orange from Image */
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --accent: #1e40af;
+  --muted: #cbd5e1;
+  /* Light Slate (Was Grey) */
+  --border: #475569;
   --card: #1e293b;
   --card-foreground: #f1f5f9;
 }

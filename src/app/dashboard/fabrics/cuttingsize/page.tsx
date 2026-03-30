@@ -448,7 +448,7 @@ export default function CuttingSizePage() {
                         <Layers className="w-6 h-6 text-primary" />
                         Fabric Lot Assignment
                     </h1>
-                    <p className="text-sm text-muted mt-1 font-medium">Link fabric lots directly to product master data for production calculation</p>
+                    <p className="text-sm text-white/60 mt-1 font-medium">Link fabric lots directly to product master data for production calculation</p>
                 </div>
             </div>
 
@@ -461,8 +461,8 @@ export default function CuttingSizePage() {
                                 <Activity className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalAvailableWeight} <span className="text-[10px] text-muted font-bold">KG</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Available Fabric</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalAvailableWeight} <span className="text-[10px] text-white/40 font-bold">KG</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Total Available Fabric</p>
                     </div>
 
                     <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
@@ -471,8 +471,8 @@ export default function CuttingSizePage() {
                                 <AlertTriangle className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingLots} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Pending Assignment</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingLots} <span className="text-[10px] text-white/40 font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Pending Assignment</p>
                     </div>
 
                     <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
@@ -481,8 +481,8 @@ export default function CuttingSizePage() {
                                 <Layers className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.partiallyLots} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Partially Assigned</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.partiallyLots} <span className="text-[10px] text-white/40 font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Partially Assigned</p>
                     </div>
 
                     <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
@@ -491,8 +491,8 @@ export default function CuttingSizePage() {
                                 <CheckCircle2 className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.fullyLots} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Fully Assigned</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.fullyLots} <span className="text-[10px] text-white/40 font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Fully Assigned</p>
                     </div>
                 </div>
             )}
@@ -593,13 +593,13 @@ export default function CuttingSizePage() {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-[10px] font-bold text-muted uppercase tracking-tight truncate max-w-[150px]">{lot.partyName}</span>
+                                                <span className="text-[10px] font-bold text-white/50 uppercase tracking-tight truncate max-w-[150px]">{lot.partyName}</span>
                                                 <div className="w-1 h-1 rounded-full bg-border" />
-                                                <span className="text-[10px] font-bold text-muted uppercase tracking-tight">{lot.color}</span>
+                                                <span className="text-[10px] font-bold text-white/50 uppercase tracking-tight">{lot.color}</span>
                                                 {lot.uniqueGsms && lot.uniqueGsms.length > 0 && (
                                                     <>
                                                         <div className="w-1 h-1 rounded-full bg-border" />
-                                                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-tight">GSM: {lot.uniqueGsms.join(' / ')}</span>
+                                                        <span className="text-[10px] font-black text-rose-500 uppercase tracking-tight">GSM: {lot.uniqueGsms.join(' / ')}</span>
                                                     </>
                                                 )}
                                             </div>
@@ -638,12 +638,12 @@ export default function CuttingSizePage() {
                                                 </button>
                                             )}
                                             <div className="flex flex-col items-center">
-                                                <span className="text-[8px] font-black text-muted uppercase tracking-widest leading-none">Total</span>
-                                                <span className="text-sm font-black text-foreground mt-1">{lot.totalWeight.toFixed(1)} <span className="text-[8px] text-muted">KG</span></span>
+                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest leading-none">Total</span>
+                                                <span className="text-sm font-black text-foreground mt-1">{lot.totalWeight.toFixed(1)} <span className="text-[8px] text-white/40">KG</span></span>
                                             </div>
                                             <div className="flex flex-col items-center">
-                                                <span className="text-[8px] font-black text-muted uppercase tracking-widest leading-none">Remaining</span>
-                                                <span className={`text-sm font-black mt-1 ${lot.remainingWeight > 0.1 ? 'text-primary' : 'text-muted'}`}>{lot.remainingWeight.toFixed(1)} <span className="text-[8px] opacity-50">KG</span></span>
+                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest leading-none">Remaining</span>
+                                                <span className={`text-sm font-black mt-1 ${lot.remainingWeight > 0.1 ? 'text-primary' : 'text-white/40'}`}>{lot.remainingWeight.toFixed(1)} <span className="text-[8px] opacity-50">KG</span></span>
                                             </div>
                                         </div>
 
@@ -665,7 +665,7 @@ export default function CuttingSizePage() {
                                     <div className="animate-in slide-in-from-top-2 duration-200">
                                         <div className="overflow-hidden border-b border-slate-100">
                                             <table className="w-full text-left">
-                                                <thead className="bg-slate-50/50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100">
+                                                <thead className="bg-secondary/30 text-[10px] font-black text-muted uppercase tracking-widest border-b border-border">
                                                     <tr>
                                                         <th className="px-6 py-3">Inward Stock Part</th>
                                                         <th className="px-6 py-3 text-center">Specifications</th>
@@ -675,7 +675,7 @@ export default function CuttingSizePage() {
                                                         <th className="px-6 py-3 text-right">Action</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-50">
+                                                <tbody className="divide-y divide-border">
                                                     {lot.items.filter((it: any) => {
                                                         const name = it.materialId?.name?.toLowerCase() || '';
                                                         const sub = it.materialId?.subType?.toLowerCase() || '';
@@ -685,17 +685,17 @@ export default function CuttingSizePage() {
                                                         const draft = draftSelections[item._id] || { productName: asgn?.productName || '', size: asgn?.productSize || '' };
 
                                                         return (
-                                                            <tr key={item._id || i} className={`hover:bg-slate-50/30 transition-colors ${asgn ? 'bg-green-50/20' : ''}`}>
+                                                            <tr key={item._id || i} className={`hover:bg-secondary/5 transition-colors ${asgn ? 'bg-emerald-500/5' : ''}`}>
                                                                 <td className="px-6 py-4">
-                                                                    <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
-                                                                        <div className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: item.color?.toLowerCase() }}></div>
+                                                                    <div className="flex items-center gap-2 font-bold text-foreground text-sm">
+                                                                        <div className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: item.color?.toLowerCase() }}></div>
                                                                         {item.color}
                                                                     </div>
-                                                                    <div className="text-[10px] font-bold text-slate-400 mt-0.5 tracking-tight uppercase italic">{item.challanNo}</div>
+                                                                    <div className="text-[10px] font-bold text-white/40 mt-0.5 tracking-tight uppercase italic">{item.challanNo}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
-                                                                    <span className="text-xs font-bold text-slate-600 block">{item.diameter} CM</span>
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase">{item.pcs} PCS</span>
+                                                                    <span className="text-xs font-bold text-white/60 block">{item.diameter} CM</span>
+                                                                    <span className="text-[9px] font-black text-white/40 uppercase">{item.pcs} PCS</span>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className="text-sm font-black text-primary">{item.quantity} KG</span>
@@ -704,11 +704,11 @@ export default function CuttingSizePage() {
                                                                     {asgn ? (
                                                                         asgn.productSize ? (
                                                                             <div className="space-y-1">
-                                                                                <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                                                                                <div className="font-bold text-sm text-foreground flex items-center gap-2">
                                                                                     <Box className="w-3.5 h-3.5 text-primary/40" />
                                                                                     {asgn.productName}
                                                                                 </div>
-                                                                                <div className="inline-flex items-center px-2 py-0.5 rounded shadow-sm bg-indigo-50 border border-indigo-100 text-[10px] font-black text-indigo-600 uppercase tracking-tight">
+                                                                                <div className="inline-flex items-center px-2 py-0.5 rounded shadow-sm bg-primary/10 border border-primary/20 text-[10px] font-black text-primary uppercase tracking-tight">
                                                                                     Size: {asgn.productSize}
                                                                                 </div>
                                                                             </div>
@@ -743,14 +743,14 @@ export default function CuttingSizePage() {
                                                                                             </button>
                                                                                         ) : (
                                                                                             <div className="flex items-center gap-2">
-                                                                                                <select
-                                                                                                    value={draftSelections[item._id]?.size || ''}
-                                                                                                    onChange={(e) => setDraftSelections(prev => ({
-                                                                                                        ...prev,
-                                                                                                        [item._id]: { productName: asgn.productName, size: e.target.value }
-                                                                                                    }))}
-                                                                                                    className="h-8 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-32"
-                                                                                                >
+                                                                                                    <select
+                                                                                                        value={draftSelections[item._id]?.size || ''}
+                                                                                                        onChange={(e) => setDraftSelections(prev => ({
+                                                                                                            ...prev,
+                                                                                                            [item._id]: { productName: asgn.productName, size: e.target.value }
+                                                                                                        }))}
+                                                                                                        className="h-8 px-2 bg-card border border-border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-32"
+                                                                                                    >
                                                                                                     <option value="">Pick size…</option>
                                                                                                     {(consumptions.find(c =>
                                                                                                         c.productName.trim().toLowerCase() === asgn.productName.trim().toLowerCase()
@@ -803,11 +803,11 @@ export default function CuttingSizePage() {
                                                                             {draft.productName && (
                                                                                 <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
                                                                                     {draft.size ? (
-                                                                                        <div
-                                                                                            onClick={() => setDraftSelections(prev => ({ ...prev, [item._id]: { ...draft, size: '' } }))}
-                                                                                            className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black rounded-lg cursor-pointer hover:bg-indigo-100 transition-all flex items-center gap-2 group"
-                                                                                            title="Click to manually change size"
-                                                                                        >
+                                                                                            <div
+                                                                                                onClick={() => setDraftSelections(prev => ({ ...prev, [item._id]: { ...draft, size: '' } }))}
+                                                                                                className="px-3 py-1.5 bg-primary/10 border border-primary/20 text-primary text-[10px] font-black rounded-lg cursor-pointer hover:bg-primary/20 transition-all flex items-center gap-2 group"
+                                                                                                title="Click to manually change size"
+                                                                                            >
                                                                                             <LayoutGrid className="w-3 h-3 text-indigo-400" />
                                                                                             SIZE: {draft.size}
                                                                                             <Plus className="w-3 h-3 rotate-45 text-indigo-300 group-hover:text-indigo-500" />
@@ -874,10 +874,10 @@ export default function CuttingSizePage() {
 
                                         {/* Rib Analysis Section */}
                                         {Object.keys(lot.ribStats || {}).length > 0 && (
-                                            <div className="p-5 bg-indigo-50/30 border-t border-indigo-100/50">
+                                            <div className="p-5 bg-card/50 border-t border-border">
                                                 <div className="flex items-center gap-2 mb-4">
-                                                    <Layers className="w-4 h-4 text-indigo-600" />
-                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-900">Rib (Accessory) Requirement Analysis</h4>
+                                                    <Layers className="w-4 h-4 text-primary" />
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-foreground">Rib (Accessory) Requirement Analysis</h4>
                                                     <div className="ml-auto flex items-center gap-4 text-[9px] font-bold text-indigo-600/70">
                                                         <span className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded-full" /> In Stock</span>
                                                         <span className="flex items-center gap-1"><div className="w-2 h-2 bg-rose-500 rounded-full" /> Required</span>
@@ -889,7 +889,7 @@ export default function CuttingSizePage() {
                                                         const balance = stats.available - stats.required;
                                                         const isShort = balance < -0.01;
                                                         return (
-                                                            <div key={color} className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden group">
+                                                            <div key={color} className="bg-secondary/20 p-3 rounded-xl border border-border/50 shadow-sm relative overflow-hidden group">
                                                                 <div className="relative z-10">
                                                                     <div className="flex items-center justify-between mb-2">
                                                                         <span className="text-[10px] font-black uppercase text-slate-700">{color === 'default' ? 'General' : color}</span>
@@ -905,8 +905,8 @@ export default function CuttingSizePage() {
                                                                     </div>
                                                                     <div className="flex items-end justify-between">
                                                                         <div className="space-y-1">
-                                                                            <div className="text-[9px] text-slate-400 font-bold flex justify-between w-32">Available: <span className="text-slate-900">{stats.available.toFixed(3)} KG</span></div>
-                                                                            <div className="text-[9px] text-slate-400 font-bold flex justify-between w-32">Required: <span className="text-slate-900 font-black">{stats.required.toFixed(3)} KG</span></div>
+                                                                            <div className="text-[9px] text-muted font-bold flex justify-between w-32">Available: <span className="text-foreground">{stats.available.toFixed(3)} KG</span></div>
+                                                                            <div className="text-[9px] text-muted font-bold flex justify-between w-32">Required: <span className="text-foreground font-black">{stats.required.toFixed(3)} KG</span></div>
                                                                         </div>
                                                                         <div className="text-right">
                                                                             <div className={`text-xs font-black ${isShort ? 'text-rose-500' : 'text-emerald-600'}`}>
@@ -919,7 +919,7 @@ export default function CuttingSizePage() {
                                                                     </div>
                                                                 </div>
                                                                 {/* Progress Bar */}
-                                                                <div className="absolute bottom-0 left-0 h-1 bg-slate-100 w-full overflow-hidden">
+                                                                <div className="absolute bottom-0 left-0 h-1 bg-border/20 w-full overflow-hidden">
                                                                     <div
                                                                         className={`h-full transition-all duration-500 ${isShort ? 'bg-rose-500' : 'bg-emerald-500'}`}
                                                                         style={{ width: `${Math.min(100, (stats.available / (stats.required || 1)) * 100)}%` }}
@@ -932,7 +932,7 @@ export default function CuttingSizePage() {
                                             </div>
                                         )}
 
-                                        <div className="p-4 bg-slate-50/50 flex items-center justify-between text-[10px] font-bold text-slate-400">
+                                        <div className="p-4 bg-secondary/5 flex items-center justify-between text-[10px] font-bold text-muted">
                                             <div className="flex items-center gap-4">
                                                 <span className="uppercase tracking-widest">Master Record Synchronization Active</span>
                                                 <span className="h-1 w-1 rounded-full bg-slate-300"></span>
@@ -946,7 +946,7 @@ export default function CuttingSizePage() {
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                            <div className="px-6 py-4 border-t border-border bg-secondary/10 flex items-center justify-between mt-4 rounded-2xl border bg-white">
+                            <div className="px-6 py-4 border-t border-border bg-secondary/10 flex items-center justify-between mt-4 rounded-2xl border">
                                 <div className="text-[10px] font-black text-muted uppercase tracking-widest leading-none">
                                     Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredLots.length)} of {filteredLots.length} lots
                                 </div>

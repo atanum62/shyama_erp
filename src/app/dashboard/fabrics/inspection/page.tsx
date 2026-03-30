@@ -583,7 +583,7 @@ export default function FabricInspectionPage() {
                                                 <button
                                                     suppressHydrationWarning
                                                     onClick={() => setExpandedLots(prev => ({ ...prev, [inward._id]: !prev[inward._id] }))}
-                                                    className={`p-1 rounded-lg transition-all ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-white border border-border text-muted hover:text-primary'}`}
+                                                    className={`p-1 rounded-lg transition-all ${expandedLots[inward._id] ? 'bg-primary text-white' : 'bg-secondary/50 border border-border/50 text-muted hover:text-primary'}`}
                                                 >
                                                     <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expandedLots[inward._id] ? '' : '-rotate-90'}`} />
                                                 </button>
@@ -592,7 +592,7 @@ export default function FabricInspectionPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <div className="text-[10px] text-muted font-black bg-white border border-gray-100 px-2 py-0.5 rounded shadow-sm">{new Date(inward.inwardDate).toLocaleDateString()}</div>
+                                                <div className="text-[10px] text-white/50 font-black bg-secondary/80 border border-border/30 px-2 py-0.5 rounded shadow-sm">{new Date(inward.inwardDate).toLocaleDateString()}</div>
                                                 <div className="text-[10px] text-primary font-black uppercase tracking-tighter">#{inward.challanNo}</div>
                                             </div>
                                         </td>
@@ -624,7 +624,7 @@ export default function FabricInspectionPage() {
 
                                                 <button
                                                     onClick={() => setViewingFullInward(inward)}
-                                                    className="p-2 bg-white border border-gray-200 text-gray-600 hover:text-primary hover:border-primary rounded-lg transition-all shadow-sm flex items-center gap-2 group/report"
+                                                    className="p-2 bg-secondary/50 border border-border/50 text-white/70 hover:text-primary hover:border-primary rounded-lg transition-all shadow-sm flex items-center gap-2 group/report"
                                                     title="View Full Inspection Report"
                                                 >
                                                     <FileText className="w-4 h-4" />
@@ -696,7 +696,7 @@ export default function FabricInspectionPage() {
                                         </td>
                                     </tr>
                                     {expandedLots[inward._id] && (
-                                        <tr className="bg-white/40 border-b border-gray-100">
+                                        <tr className="bg-secondary/10 border-b border-border/50">
                                             <td colSpan={5} className="px-6 py-6 pt-2">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                                                     {Object.entries(
@@ -718,7 +718,7 @@ export default function FabricInspectionPage() {
                                                                     if ((e.target as HTMLElement).closest('button')) return;
                                                                     toggleColorSelection(inward._id, colorName);
                                                                 }}
-                                                                className={`bg-white border-2 border-l-[6px] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-gray-100 hover:border-primary/20'
+                                                                className={`bg-card border-2 border-l-[6px] rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group/card cursor-pointer relative ${isSelected ? 'border-primary ring-4 ring-primary/10' : 'border-border/50 hover:border-primary/20'
                                                                     }`}
                                                                 style={{ borderLeftColor: colorName.toLowerCase() }}
                                                             >
@@ -731,15 +731,15 @@ export default function FabricInspectionPage() {
                                                                     </div>
                                                                 )}
                                                                 {/* Card Header with Batch Actions */}
-                                                                <div className="p-4 border-b border-gray-50 bg-gray-50/40 flex items-center justify-between">
+                                                                <div className="p-4 border-b border-border/50 bg-secondary/30 flex items-center justify-between">
                                                                     <div className="flex items-center gap-3">
-                                                                        <div className="w-4 h-4 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: colorName.toLowerCase() }} />
+                                                                        <div className="w-4 h-4 rounded-full border-2 border-white/20 shadow-md" style={{ backgroundColor: colorName.toLowerCase() }} />
                                                                         <div>
-                                                                            <div className="text-[12px] font-black text-gray-900 uppercase leading-none">{colorName}</div>
+                                                                            <div className="text-[12px] font-black text-foreground uppercase leading-none">{colorName}</div>
                                                                             <div className="flex items-center gap-2 mt-1">
                                                                                 <div className="text-[9px] font-bold text-primary">{group.totalQty.toFixed(2)} KG</div>
-                                                                                <div className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                                <div className="text-[9px] font-bold text-blue-600">{group.totalPcs} PCS</div>
+                                                                                <div className="w-1 h-1 rounded-full bg-border" />
+                                                                                <div className="text-[9px] font-bold text-blue-400">{group.totalPcs} PCS</div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -804,19 +804,19 @@ export default function FabricInspectionPage() {
 
                                                                 <div className="p-3 space-y-2 max-h-[220px] overflow-y-auto no-scrollbar">
                                                                     {group.items.map((item: any, i: number) => (
-                                                                        <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-white border border-transparent hover:border-gray-200 transition-all group/item">
+                                                                        <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-secondary/40 hover:bg-secondary/60 border border-transparent hover:border-border/50 transition-all group/item">
                                                                             <div>
-                                                                                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.materialId?.name || 'Fabric'}</div>
+                                                                                <div className="text-[9px] font-black text-white/40 uppercase tracking-widest">{item.materialId?.name || 'Fabric'}</div>
                                                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                                                    <span className="text-[11px] font-black text-gray-800">{item.diameter}" DIA</span>
-                                                                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                                    <span className="text-[11px] font-black text-foreground">{item.diameter}" DIA</span>
+                                                                                    <span className="w-1 h-1 rounded-full bg-border" />
                                                                                     <span className="text-[11px] font-black text-primary">{item.quantity} KG</span>
-                                                                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                                    <span className="text-[11px] font-black text-blue-600">{item.pcs} PCS</span>
+                                                                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                                                                    <span className="text-[11px] font-black text-blue-400">{item.pcs} PCS</span>
                                                                                     {item.gsm > 0 && (
                                                                                         <>
-                                                                                            <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                                            <span className="text-[11px] font-black text-orange-600 uppercase">{item.gsm} GSM</span>
+                                                                                            <span className="w-1 h-1 rounded-full bg-border" />
+                                                                                            <span className="text-[11px] font-black text-orange-500 uppercase">{item.gsm} GSM</span>
                                                                                         </>
                                                                                     )}
                                                                                 </div>
@@ -873,7 +873,7 @@ export default function FabricInspectionPage() {
                                     {/* Lot Separator Row */}
                                     <tr>
                                         <td colSpan={5} className="p-0">
-                                            <div className="h-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent my-2 opacity-50" />
+                                            <div className="h-1 bg-gradient-to-r from-transparent via-border/20 to-transparent my-2 opacity-50" />
                                         </td>
                                     </tr>
                                 </React.Fragment>
@@ -999,42 +999,42 @@ export default function FabricInspectionPage() {
             {
                 viewingSpecificColor && (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={() => setViewingSpecificColor(null)} />
-                        <div className="relative bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-300">
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setViewingSpecificColor(null)} />
+                        <div className="relative bg-card w-full max-w-4xl rounded-[2rem] shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in duration-300">
                             {/* Modal Header */}
-                            <div className="p-8 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
+                            <div className="p-8 border-b border-border/50 bg-secondary/30 flex items-center justify-between">
                                 <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 rounded-3xl border-4 border-white shadow-xl flex-shrink-0" style={{ backgroundColor: viewingSpecificColor.color.toLowerCase() }} />
+                                    <div className="w-16 h-16 rounded-3xl border-4 border-white/10 shadow-xl flex-shrink-0" style={{ backgroundColor: viewingSpecificColor.color.toLowerCase() }} />
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-widest">LOT {viewingSpecificColor.lotNo}</span>
-                                            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">Inspection Mode</span>
+                                            <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Inspection Mode</span>
                                         </div>
-                                        <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">{viewingSpecificColor.color} Management</h2>
+                                        <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">{viewingSpecificColor.color} Management</h2>
                                     </div>
                                 </div>
-                                <button onClick={() => setViewingSpecificColor(null)} className="p-3 bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all shadow-sm border border-gray-100 active:scale-90">
+                                <button onClick={() => setViewingSpecificColor(null)} className="p-3 bg-secondary/50 hover:bg-red-500/10 text-white/40 hover:text-red-500 rounded-2xl transition-all shadow-sm border border-border/50 active:scale-90">
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
 
                             {/* Modal Content */}
-                            <div className="p-8 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+                            <div className="p-8 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                 <div className="grid grid-cols-1 gap-4">
                                     {viewingSpecificColor.items.map((item: any, i: number) => (
-                                        <div key={i} className="flex items-center justify-between p-6 rounded-3xl bg-gray-50 border border-transparent hover:border-primary/20 hover:bg-white hover:shadow-lg transition-all group/bigitem">
+                                        <div key={i} className="flex items-center justify-between p-6 rounded-3xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 hover:shadow-lg transition-all group/bigitem">
                                             <div className="flex items-center gap-6">
-                                                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center border border-gray-100 text-gray-400 font-bold shadow-inner">
+                                                <div className="w-12 h-12 rounded-2xl bg-secondary/50 flex items-center justify-center border border-border/50 text-white/40 font-bold shadow-inner">
                                                     {i + 1}
                                                 </div>
                                                 <div>
-                                                    <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{item.materialId?.name || 'Standard Fabric'}</div>
+                                                    <div className="text-xs font-black text-white/40 uppercase tracking-widest mb-1">{item.materialId?.name || 'Standard Fabric'}</div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-xl font-black text-gray-900">{item.diameter}" DIAMETER</span>
-                                                        <div className="w-2 h-2 rounded-full bg-gray-300" />
+                                                        <span className="text-xl font-black text-foreground">{item.diameter}" DIAMETER</span>
+                                                        <div className="w-2 h-2 rounded-full bg-border" />
                                                         <span className="text-xl font-black text-primary">{item.quantity} KG</span>
-                                                        <div className="w-2 h-2 rounded-full bg-gray-300" />
-                                                        <span className="text-xl font-black text-blue-600">{item.pcs} PCS</span>
+                                                        <div className="w-2 h-2 rounded-full bg-border" />
+                                                        <span className="text-xl font-black text-blue-400">{item.pcs} PCS</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1079,9 +1079,9 @@ export default function FabricInspectionPage() {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-8 bg-gray-50/50 border-t border-gray-50 flex items-center justify-between">
-                                <div className="text-sm font-bold text-gray-500">
-                                    Total Varieties for {viewingSpecificColor.color}: <span className="text-gray-900">{viewingSpecificColor.items.length} Units</span>
+                            <div className="p-8 bg-secondary/30 border-t border-border/50 flex items-center justify-between">
+                                <div className="text-sm font-bold text-white/50">
+                                    Total Varieties for {viewingSpecificColor.color}: <span className="text-foreground">{viewingSpecificColor.items.length} Units</span>
                                 </div>
                                 <div className="flex gap-4">
                                     {viewingSpecificColor.items.some(i => i.status === 'Pending') && (

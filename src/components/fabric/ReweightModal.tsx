@@ -50,15 +50,15 @@ export const ReweightModal: React.FC<ReweightModalProps> = ({ isOpen, onClose, i
                 <div className="p-6 space-y-4">
                     <div className="bg-secondary/30 p-4 rounded-xl space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted">Challan No:</span>
+                            <span className="text-white/50">Challan No:</span>
                             <span className="font-bold">{item.challanNo || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted">Fabric:</span>
+                            <span className="text-white/50">Fabric:</span>
                             <span className="font-bold">{item.materialId?.name || 'Standard Fabric'} ({item.color})</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted">Current Weight:</span>
+                            <span className="text-white/50">Current Weight:</span>
                             <span className="font-bold text-red-500">{item.quantity} KG</span>
                         </div>
                     </div>
@@ -73,11 +73,11 @@ export const ReweightModal: React.FC<ReweightModalProps> = ({ isOpen, onClose, i
                                 value={newWeight}
                                 onChange={(e) => setNewWeight(e.target.value)}
                                 placeholder="Enter actual weight..."
-                                className="w-full px-4 py-3 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg font-bold"
+                                className="w-full px-4 py-3 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg font-bold text-foreground"
                             />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted font-bold">KG</div>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-bold">KG</div>
                         </div>
-                        <p className="text-[10px] text-muted ml-1 italic">* This will update the inward quantity and reset status to Pending for inspection.</p>
+                        <p className="text-[10px] text-white/30 ml-1 italic">* This will update the inward quantity and reset status to Pending for inspection.</p>
                     </div>
                 </div>
 
@@ -91,7 +91,7 @@ export const ReweightModal: React.FC<ReweightModalProps> = ({ isOpen, onClose, i
                     <button
                         onClick={handleConfirm}
                         disabled={isUpdating || !newWeight}
-                        className="flex-1 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:opacity-90 shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:scale-[1.05] hover:-translate-y-1 hover:brightness-110 active:scale-[0.95] shadow-lg shadow-primary/30 transition-all duration-300 disabled:bg-primary/20 disabled:text-white/20 disabled:shadow-none disabled:scale-100 disabled:translate-y-0 flex items-center justify-center gap-2"
                     >
                         {isUpdating ? 'Updating...' : 'Confirm Reweight'}
                     </button>

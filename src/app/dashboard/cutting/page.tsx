@@ -588,7 +588,7 @@ export default function CuttingPage() {
                         Master Information
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-5">
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Date</label>
                             <input
                                 suppressHydrationWarning
@@ -599,7 +599,7 @@ export default function CuttingPage() {
                             />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Lot No.</label>
                              <select
                                 suppressHydrationWarning
@@ -632,7 +632,7 @@ export default function CuttingPage() {
                             </select>
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Challan No.</label>
                             <input
                                 suppressHydrationWarning
@@ -644,7 +644,7 @@ export default function CuttingPage() {
                             />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Interlock Totals</label>
                             <div className="flex items-center gap-2">
                                 <div className="text-sm font-black text-primary">{form.interlockWeight} KG</div>
@@ -652,7 +652,7 @@ export default function CuttingPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Rib Totals</label>
                             <div className="flex items-center gap-2">
                                 <div className="text-sm font-black text-orange-600">{form.ribWeight} KG</div>
@@ -660,37 +660,37 @@ export default function CuttingPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Product Name</label>
                             <input type="text" value={form.productName} readOnly className="w-full bg-transparent outline-none font-black text-sm text-primary" />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">GSM Info</label>
                             <input type="text" value={form.gsm} readOnly className="w-full bg-transparent outline-none font-black text-sm text-muted" />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Total Rolls</label>
                             <input type="text" value={form.totalRolls} readOnly className="w-full bg-transparent outline-none font-black text-sm text-muted" />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Fabric Quality</label>
                             <input type="text" value={form.quality} readOnly className="w-full bg-transparent outline-none font-black text-sm text-muted uppercase" />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Total Weight</label>
                             <input type="text" value={form.totalWeight + ' KG'} readOnly className="w-full bg-transparent outline-none font-black text-sm text-muted" />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Passed Colors</label>
                             <input type="text" value={form.color} readOnly className="w-full bg-transparent outline-none font-black text-sm text-rose-600 uppercase" />
                         </div>
 
-                        <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
+                        <div className="space-y-1.5 p-3 bg-orange-500/10 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Sheet Remarks</label>
                             <input
                                 suppressHydrationWarning
@@ -706,7 +706,7 @@ export default function CuttingPage() {
 
                 {/* Section 2: Cutting Table */}
                 <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-secondary/10">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-orange-500/20">
                         <div className="flex items-center gap-3">
                             <div className="w-1.5 h-6 bg-primary rounded-full" />
                             <span className="text-xs font-black uppercase tracking-widest text-foreground">Cutting Details</span>
@@ -723,7 +723,7 @@ export default function CuttingPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[1300px]">
                             <thead>
-                                <tr className="bg-secondary/30 text-[9px] font-black uppercase text-muted tracking-[0.15em] border-b border-border">
+                                <tr className="bg-orange-500/30 text-[9px] font-black uppercase text-orange-200 tracking-[0.15em] border-b border-orange-500/50">
                                     <th className="px-4 py-4 text-center w-12">#</th>
                                     <th className="px-4 py-4">Slip No</th>
                                     <th className="px-4 py-4">Total Slip</th>
@@ -745,7 +745,7 @@ export default function CuttingPage() {
                                         ?.variations?.map((v: any) => v.size) || [];
 
                                     return (
-                                        <tr key={idx} className="border-b border-border hover:bg-secondary/5 transition-all group">
+                                        <tr key={idx} className="border-b border-border hover:bg-orange-500/10 transition-all group">
                                             <td className="px-4 py-4 text-center text-[11px] font-black text-muted/50">{idx + 1}</td>
 
                                             <td className="px-2 py-3">
@@ -782,7 +782,7 @@ export default function CuttingPage() {
                                             </td>
 
                                             <td className="px-2 py-3">
-                                                <input type="number" value={row.pcs || ''} readOnly className="w-full h-9 px-3 bg-secondary/20 border-0 rounded-lg text-xs font-black text-center text-muted" />
+                                                <input type="number" value={row.pcs || ''} readOnly className="w-full h-9 px-3 bg-orange-500/10 border-0 rounded-lg text-xs font-black text-center text-muted" />
                                             </td>
 
                                             <td className="px-2 py-3">
@@ -805,11 +805,11 @@ export default function CuttingPage() {
                                             </td>
 
                                             <td className="px-2 py-3">
-                                                <input type="number" value={row.inRB || ''} readOnly className="w-full h-9 px-3 bg-secondary/20 border-0 rounded-lg text-xs font-bold text-center text-muted" />
+                                                <input type="number" value={row.inRB || ''} readOnly className="w-full h-9 px-3 bg-orange-500/10 border-0 rounded-lg text-xs font-bold text-center text-muted" />
                                             </td>
 
                                             <td className="px-2 py-3">
-                                                <input type="number" value={row.folRB || ''} readOnly className="w-full h-9 px-3 bg-secondary/20 border-0 rounded-lg text-xs font-bold text-center text-muted" />
+                                                <input type="number" value={row.folRB || ''} readOnly className="w-full h-9 px-3 bg-orange-500/10 border-0 rounded-lg text-xs font-bold text-center text-muted" />
                                             </td>
 
                                             <td className="px-2 py-3">
@@ -848,7 +848,7 @@ export default function CuttingPage() {
                             </tfoot>
                         </table>
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-secondary/10 border-t border-border">
+                    <div className="flex items-center justify-between p-4 bg-orange-500/20 border-t border-border">
                         <div className="flex items-center gap-4">
                             <div className="flex flex-col gap-1">
                                 <label className="text-[9px] font-black uppercase text-muted/60 tracking-wider">Common Wastage Coeff</label>
@@ -1000,7 +1000,7 @@ export default function CuttingPage() {
 
             {/* List Content */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-border bg-secondary/5 flex items-center justify-between gap-4">
+                <div className="p-5 border-b border-border bg-orange-500/10 flex items-center justify-between gap-4">
                     <div className="relative w-full max-w-sm">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/50" />
                         <input
@@ -1019,7 +1019,7 @@ export default function CuttingPage() {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-secondary/30 text-[9px] font-black uppercase text-muted tracking-widest border-b border-border">
+                            <tr className="bg-orange-500/20 text-[9px] font-black uppercase text-orange-200 tracking-widest border-b border-orange-500/30">
                                 <th className="px-6 py-5">Sheet Details</th>
                                 <th className="px-6 py-5">Production Info</th>
                                 <th className="px-6 py-5">Lot & Colors</th>

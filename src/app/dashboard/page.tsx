@@ -113,7 +113,7 @@ export default function DashboardPage() {
                         <div className="space-y-2 text-center">
                             <div className="text-4xl font-black text-orange-600">{stats?.counts?.cutting}</div>
                             <div className="text-[10px] font-bold text-muted uppercase">Orders in Cutting</div>
-                            <div className="h-1 bg-orange-100 rounded-full w-24 mx-auto" />
+                            <div className="h-1 bg-orange-900/30 rounded-full w-24 mx-auto" />
                         </div>
                     </div>
                     <div className="p-6 bg-secondary/10 border-t border-border mt-auto">
@@ -208,7 +208,7 @@ export default function DashboardPage() {
                         {/* Flow Nodes */}
                         <div className="flex flex-col md:flex-row items-center w-full justify-between gap-2">
                             <div className="flex flex-col items-center gap-3 w-28 group">
-                                <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-lg border-2 border-blue-400 group-hover:scale-110 transition-transform">
+                                <div className="w-16 h-16 rounded-full bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-lg border-2 border-blue-400 group-hover:scale-110 transition-transform">
                                     <Package className="w-8 h-8" />
                                 </div>
                                 <span className="text-[10px] md:text-xs font-bold text-center uppercase">Inward Lots</span>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                             <ArrowRight className="w-6 h-6 text-muted rotate-90 md:rotate-0 flex-shrink-0" />
                             
                             <div className="flex flex-col items-center gap-3 w-28 group">
-                                <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center shadow-lg border-2 border-orange-400 group-hover:scale-110 transition-transform">
+                                <div className="w-16 h-16 rounded-full bg-orange-900/30 text-orange-600 flex items-center justify-center shadow-lg border-2 border-orange-400 group-hover:scale-110 transition-transform">
                                     <Scissors className="w-8 h-8" />
                                 </div>
                                 <span className="text-[10px] md:text-xs font-bold text-center uppercase">Cutting</span>
@@ -226,7 +226,7 @@ export default function DashboardPage() {
                             <ArrowRight className="w-6 h-6 text-muted rotate-90 md:rotate-0 flex-shrink-0" />
 
                             <div className="flex flex-col items-center gap-3 w-28 group">
-                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center shadow-lg border-2 border-purple-400 group-hover:scale-110 transition-transform">
+                                <div className="w-16 h-16 rounded-full bg-purple-900/30 text-purple-600 flex items-center justify-center shadow-lg border-2 border-purple-400 group-hover:scale-110 transition-transform">
                                     <UserCircle className="w-8 h-8" />
                                 </div>
                                 <span className="text-[10px] md:text-xs font-bold text-center uppercase">Stitching</span>
@@ -235,14 +235,14 @@ export default function DashboardPage() {
                             <ArrowRight className="w-6 h-6 text-muted rotate-90 md:rotate-0 flex-shrink-0" />
 
                             <div className="flex flex-col items-center gap-3 w-28 group">
-                                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center shadow-lg border-2 border-green-400 group-hover:scale-110 transition-transform">
+                                <div className="w-16 h-16 rounded-full bg-green-900/30 text-green-600 flex items-center justify-center shadow-lg border-2 border-green-400 group-hover:scale-110 transition-transform">
                                     <Truck className="w-8 h-8" />
                                 </div>
                                 <span className="text-[10px] md:text-xs font-bold text-center uppercase">Dispatch</span>
                             </div>
                         </div>
                         
-                        <div className="w-full mt-auto bg-green-500/10 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-900/50 text-center text-xs text-green-700 dark:text-green-400">
+                        <div className="w-full mt-auto bg-green-900/20 p-4 rounded-xl border border-green-900/50 text-center text-xs text-green-400">
                             Flow completion rate: <strong>88% (Healthy)</strong>. No major bottlenecks detected.
                         </div>
                     </div>

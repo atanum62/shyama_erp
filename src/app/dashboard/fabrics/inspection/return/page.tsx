@@ -429,7 +429,7 @@ export default function FabricReturnPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">Fabric Return Management</h1>
-                    <p className="text-muted text-sm font-medium">Manage color-rejected lots and track redyeing from dyeing houses.</p>
+                    <p className="text-white/60 text-sm font-medium">Manage color-rejected lots and track redyeing from dyeing houses.</p>
                 </div>
             </div>
 
@@ -442,8 +442,8 @@ export default function FabricReturnPage() {
                                 <AlertCircle className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingCount} <span className="text-[10px] text-muted font-bold">Groups</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Pending Returns</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingCount} <span className="text-[10px] text-white/40 font-bold">Groups</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Pending Returns</p>
                     </div>
 
                     <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
@@ -452,8 +452,8 @@ export default function FabricReturnPage() {
                                 <RotateCcw className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingWeight} <span className="text-[10px] text-muted font-bold">KG</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Return Volume</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.pendingWeight} <span className="text-[10px] text-white/40 font-bold">KG</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Total Return Volume</p>
                     </div>
 
                     <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
@@ -462,8 +462,8 @@ export default function FabricReturnPage() {
                                 <Truck className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.atDyeingCount} <span className="text-[10px] text-muted font-bold">Lots</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Currently at Dyeing</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.atDyeingCount} <span className="text-[10px] text-white/40 font-bold">Lots</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Currently at Dyeing</p>
                     </div>
 
                     <div className="bg-card p-4 rounded-2xl border border-border shadow-sm hover:border-primary/20 transition-all">
@@ -472,8 +472,8 @@ export default function FabricReturnPage() {
                                 <CheckCircle2 className="w-5 h-5" />
                             </div>
                         </div>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalHistoryCount} <span className="text-[10px] text-muted font-bold">Logs</span></h3>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">Total Return History</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{dashboardStats.totalHistoryCount} <span className="text-[10px] text-white/40 font-bold">Logs</span></h3>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Total Return History</p>
                     </div>
                 </div>
             )}
@@ -674,7 +674,7 @@ export default function FabricReturnPage() {
                                                         </button>
                                                         <button
                                                             onClick={() => openReturnModal(item)}
-                                                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm flex items-center gap-1"
+                                                            className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:scale-105 hover:-translate-y-1 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-1"
                                                         >
                                                             <Truck className="w-3 h-3" />
                                                             Return Lot
@@ -1073,7 +1073,7 @@ export default function FabricReturnPage() {
                             <button
                                 onClick={handleRereceiveAndReset}
                                 disabled={isUpdating || !newColor || (selectedItem.isGroup ? false : !rereceiveFormData.weight)}
-                                className="flex-[2] px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="flex-[2] px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:scale-105 hover:-translate-y-1 hover:brightness-110 active:scale-95 shadow-lg shadow-green-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {isUpdating ? 'Updating...' : 'Confirm Receipt'}
                             </button>
@@ -1200,7 +1200,7 @@ export default function FabricReturnPage() {
                             <button
                                 onClick={handleConfirmReturn}
                                 disabled={isUpdating || !returnFormData.challanNo}
-                                className="flex-[2] px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="flex-[2] px-4 py-3 bg-primary text-white font-bold rounded-xl hover:scale-105 hover:-translate-y-1 hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {isUpdating ? (
                                     <>
@@ -1223,7 +1223,7 @@ export default function FabricReturnPage() {
             {/* NEW: Detailed View Modal (PDF Format) */}
             {isDetailModalOpen && selectedItem && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] overflow-y-auto flex justify-center py-10 px-4">
-                    <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 h-fit">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 h-fit text-black">
                         {/* Action Header (Not part of print) */}
                         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl print:hidden">
                             <div className="flex items-center gap-2">
@@ -1253,20 +1253,20 @@ export default function FabricReturnPage() {
                                 {/* Letterhead */}
                                 <div className="flex justify-between items-start mb-12 border-b-2 border-slate-900 pb-8">
                                     <div>
-                                        <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-1">{systemSettings?.companyName || 'SHYAMA FABRICS'}</h1>
-                                        <div className="text-[10px] md:text-xs uppercase font-bold tracking-widest text-muted-foreground">Quality Fabric & Processing Unit</div>
-                                        <div className="text-[9px] md:text-[10px] text-muted-foreground mt-4 leading-relaxed max-w-[250px]">
+                                        <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-1 text-black">{systemSettings?.companyName || 'SHYAMA FABRICS'}</h1>
+                                        <div className="text-[10px] md:text-xs uppercase font-bold tracking-widest text-black/50">Quality Fabric & Processing Unit</div>
+                                        <div className="text-[9px] md:text-[10px] text-black/40 mt-4 leading-relaxed max-w-[250px]">
                                             {systemSettings?.address || 'Office Address details from Master Data'}<br />
                                             {systemSettings?.email && `Email: ${systemSettings.email}`} {systemSettings?.contactNumber && `| Contact: ${systemSettings.contactNumber}`}
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-xl md:text-2xl font-black mb-1">RETURN ADVICE</div>
-                                        <div className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase opacity-50 mb-6">Original Copy</div>
+                                        <div className="text-xl md:text-2xl font-black mb-1 text-black">RETURN ADVICE</div>
+                                        <div className="text-[9px] md:text-[10px] font-bold text-black/30 uppercase mb-6">Original Copy</div>
                                         <div className="space-y-1">
-                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-gray-400">LOT NO:</span> <span className="font-bold ml-2 underline underline-offset-4 decoration-black/20 text-sm tracking-tight">{selectedItem.lotNo}</span></div>
-                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-gray-400">DATE:</span> <span className="font-bold ml-2">{new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-gray-400">STATUS:</span> <span className="font-bold ml-2 text-red-600">REJECTION RETURN</span></div>
+                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-black/40">LOT NO:</span> <span className="font-bold ml-2 underline underline-offset-4 decoration-black/20 text-sm tracking-tight text-black">{selectedItem.lotNo}</span></div>
+                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-black/40">DATE:</span> <span className="font-bold ml-2 text-black">{new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+                                            <div className="text-[9px] md:text-[10px]"><span className="font-black text-black/40">STATUS:</span> <span className="font-bold ml-2 text-red-600">REJECTION RETURN</span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1274,17 +1274,17 @@ export default function FabricReturnPage() {
                                 {/* Addresses */}
                                 <div className="grid grid-cols-2 gap-12 mb-12">
                                     <div className="space-y-2">
-                                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Return To (Dyeing House)</div>
-                                        <div className="text-lg font-black tracking-tight">{selectedItem.partyName}</div>
-                                        <div className="text-[10px] text-muted-foreground leading-relaxed">
+                                        <div className="text-[10px] font-black text-black/40 uppercase tracking-widest">Return To (Dyeing House)</div>
+                                        <div className="text-lg font-black tracking-tight text-black">{selectedItem.partyName}</div>
+                                        <div className="text-[10px] text-black/50 leading-relaxed">
                                             Assigned Processing Unit<br />
                                             Subject: Color Rejection & Reprocessing
                                         </div>
                                     </div>
                                     <div className="space-y-2 bg-slate-50 p-4 border-l-4 border-slate-900 rounded-r-lg">
-                                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reference Inward</div>
-                                        <div className="text-md font-bold underline underline-offset-4 decoration-black/10">Inward No: {selectedItem.challanNo}</div>
-                                        <div className="text-[10px] text-muted-foreground">Original Receipt: {new Date(selectedItem.inwardDate).toLocaleDateString()}</div>
+                                        <div className="text-[10px] font-black text-black/40 uppercase tracking-widest">Reference Inward</div>
+                                        <div className="text-md font-bold underline underline-offset-4 decoration-black/10 text-black">Inward No: {selectedItem.challanNo}</div>
+                                        <div className="text-[10px] text-black/50">Original Receipt: {new Date(selectedItem.inwardDate).toLocaleDateString()}</div>
                                     </div>
                                 </div>
 
@@ -1304,14 +1304,14 @@ export default function FabricReturnPage() {
                                         <div key={i} className="grid grid-cols-12 text-[10px] md:text-[11px] p-3 md:p-5 font-medium hover:bg-gray-50/50 transition-colors">
                                             <div className="col-span-1 text-center font-bold text-gray-400">{i + 1}</div>
                                             <div className="col-span-3 px-2 md:px-4">
-                                                <div className="font-black text-xs md:text-sm tracking-tight">{it.color}</div>
-                                                <div className="text-[8px] md:text-[10px] text-muted-foreground uppercase">{it.materialId?.name || 'Fabric Group'}</div>
+                                                <div className="font-black text-xs md:text-sm tracking-tight text-black">{it.color}</div>
+                                                <div className="text-[8px] md:text-[10px] text-black/50 uppercase">{it.materialId?.name || 'Fabric Group'}</div>
                                             </div>
                                             <div className="col-span-1 text-center text-gray-500 font-bold">{it.diameter || '-'}</div>
                                             <div className="col-span-2 text-center">
                                                 <span className="text-xs md:text-md font-black bg-primary/5 px-2 py-1 rounded text-primary">{it.pcs || '-'}</span>
                                             </div>
-                                            <div className="col-span-2 text-center text-sm md:text-lg font-black tracking-tighter">{Number(it.quantity).toFixed(2)}</div>
+                                            <div className="col-span-2 text-center text-sm md:text-lg font-black tracking-tighter text-black">{Number(it.quantity).toFixed(2)}</div>
                                             <div className="col-span-3 text-right font-black italic text-red-600 bg-red-50/30 px-2 md:px-3 py-1 rounded border border-red-100/50 flex flex-col justify-center items-end">
                                                 <span className="text-[7px] md:text-[8px] uppercase font-bold opacity-50 mb-0.5">Rejected For</span>
                                                 <span className="text-[9px] md:text-[10px]">{it.rejectionCause || 'COLOR OUT'}</span>
@@ -1353,8 +1353,8 @@ export default function FabricReturnPage() {
                                     </div>
                                     <div className="text-right flex flex-col items-end">
                                         <div className="h-16 w-32 border-b-2 border-dashed border-gray-300 mb-2"></div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest">Dyeing Representative</div>
-                                        <div className="text-[9px] text-muted-foreground uppercase opacity-50 mt-1">Acknowledgment of Receipt</div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-black">Dyeing Representative</div>
+                                        <div className="text-[9px] text-black/40 uppercase mt-1">Acknowledgment of Receipt</div>
                                     </div>
                                 </div>
 
