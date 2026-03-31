@@ -760,7 +760,7 @@ export default function FabricReweightPage() {
                                                                                 </div>
                                                                                 <div className="flex items-center justify-between">
                                                                                     <div className="flex items-center gap-2">
-                                                                                        <span className="text-xs font-black text-gray-800">{item.diameter}" DIA</span>
+                                                                                        <span className="text-xs font-black text-gray-800">{item.diameter}{item.diameter !== 'Rib' && '"'} DIA</span>
                                                                                         <span className="text-xs font-bold text-gray-300">|</span>
                                                                                         <span className="text-xs font-black text-blue-600">{item.pcs} PCS</span>
                                                                                     </div>
@@ -927,7 +927,7 @@ export default function FabricReweightPage() {
 
                                                 return (
                                                     <tr key={i} className={`border-b-[2px] border-black ${!hasChanged ? 'bg-gray-50/50 opacity-60' : isProposed ? 'bg-orange-50/30' : ''}`}>
-                                                        <td className="p-4 border-r border-black">{item.materialId?.name || 'Fabric'} - {item.diameter}" DIA ({item.pcs} PCS)</td>
+                                                        <td className="p-4 border-r border-black">{item.materialId?.name || 'Fabric'} - {item.diameter}{item.diameter !== 'Rib' && '"'} DIA ({item.pcs} PCS)</td>
                                                         <td className="p-4 border-r border-black">{Number(originalWeight).toFixed(2)}</td>
                                                         <td className={`p-4 border-r border-black font-black ${diff > 0 ? 'text-blue-600' : diff < 0 ? 'text-red-500' : 'text-gray-400'}`}>
                                                             {diff > 0 ? '+' : diff < 0 ? '' : '— '}{diff !== 0 ? diff.toFixed(2) : ''}
@@ -1120,7 +1120,7 @@ export default function FabricReweightPage() {
                                                         <td className="p-4 border-r border-black">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color.toLowerCase() }} />
-                                                                {item.color} - {item.diameter}" DIA ({item.pcs} PCS)
+                                                                {item.color} - {item.diameter}{item.diameter !== 'Rib' && '"'} DIA ({item.pcs} PCS)
                                                             </div>
                                                         </td>
                                                         <td className="p-4 border-r border-black">{Number(originalWeight).toFixed(2)}</td>

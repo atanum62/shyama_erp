@@ -331,7 +331,8 @@ export const BulkReweightModal: React.FC<BulkReweightModalProps> = ({ isOpen, on
                                 <div className="grid grid-cols-2 gap-3">
                                     <select value={filterDia} onChange={(e) => setFilterDia(e.target.value)} className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-xs font-bold focus:outline-none focus:border-primary">
                                         <option value="all">ANY DIA</option>
-                                        {uniqueDias.map(dia => <option key={dia} value={dia}>{dia}" DIA</option>)}
+                                        <option value="Rib">RIB</option>
+                                        {uniqueDias.map(dia => <option key={dia} value={dia}>{dia}{dia !== 'Rib' && '"'} DIA</option>)}
                                     </select>
                                     <select value={filterColor} onChange={(e) => setFilterColor(e.target.value)} className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-xs font-bold focus:outline-none focus:border-primary">
                                         <option value="all">ANY COLOR</option>
@@ -393,7 +394,8 @@ export const BulkReweightModal: React.FC<BulkReweightModalProps> = ({ isOpen, on
                                         <div key={rule.id} className="p-2 sm:p-3 bg-white rounded-xl border border-border shadow-sm border-l-[6px] border-l-primary/30 flex items-center gap-2">
                                             <select value={rule.dia} onChange={(e) => updateRule(rule.id, 'dia', e.target.value)} className="flex-1 min-w-0 px-2 py-2 bg-secondary/20 border border-border rounded-lg text-[10px] font-bold focus:outline-none">
                                                 <option value="all">Any DIA</option>
-                                                {uniqueDias.map(dia => <option key={dia} value={dia}>{dia} DIA</option>)}
+                                                <option value="Rib">Rib</option>
+                                                {uniqueDias.map(dia => <option key={dia} value={dia}>{dia}{dia !== 'Rib' && '"'} DIA</option>)}
                                             </select>
                                             <select value={rule.color} onChange={(e) => updateRule(rule.id, 'color', e.target.value)} className="flex-1 min-w-0 px-2 py-2 bg-secondary/20 border border-border rounded-lg text-[10px] font-bold focus:outline-none">
                                                 <option value="all">Any Color</option>
@@ -426,7 +428,7 @@ export const BulkReweightModal: React.FC<BulkReweightModalProps> = ({ isOpen, on
                                 {previews.map((p, i) => (
                                     <div key={i} className={`p-3 rounded-xl border transition-all flex flex-col gap-2 ${p.changed ? 'bg-white border-primary shadow-sm scale-[1.01]' : 'bg-white/40 border-gray-100 opacity-60'}`}>
                                         <div className="flex items-center justify-between">
-                                            <div className="text-[10px] font-black text-gray-400 uppercase">{p.color} • {p.diameter}"</div>
+                                            <div className="text-[10px] font-black text-gray-400 uppercase">{p.color} • {p.diameter}{p.diameter !== 'Rib' && '"'}</div>
                                             <div className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 rounded-sm">{p.pcs || 0} PCS</div>
                                         </div>
                                         <div className="flex items-center justify-between leading-none">
@@ -536,7 +538,7 @@ export const BulkReweightModal: React.FC<BulkReweightModalProps> = ({ isOpen, on
                                                     <tr key={i} className={`border-b-[2px] border-black ${!p.changed ? 'bg-gray-50/50 opacity-80' : ''}`}>
                                                         <td className="p-3 border-r border-black">
                                                             <div className="flex items-center justify-between">
-                                                                <span>{p.color} - {p.diameter}" DIA ({p.pcs} PCS)</span>
+                                                                <span>{p.color} - {p.diameter}{p.diameter !== 'Rib' && '"'} DIA ({p.pcs} PCS)</span>
                                                                 <span className={`text-[7px] px-1 rounded-sm border font-black ${p.changed ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-gray-300 text-gray-400'}`}>
                                                                     {p.changed ? 'REWEIGHTED' : 'UNCHANGED'}
                                                                 </span>

@@ -850,7 +850,7 @@ export default function InwardPage() {
                                             <div className="text-sm font-bold text-muted">{inward.items.reduce((acc: number, cur: any) => acc + (cur.pcs || 0), 0)} PCS</div>
                                         </td>
                                         <td className="px-10 py-4">
-                                            <div className="text-sm font-bold text-primary">{inward.totalQuantity || inward.items.reduce((acc: number, cur: any) => acc + cur.quantity, 0)} KG</div>
+                                            <div className="text-sm font-bold text-primary">{parseFloat((inward.totalQuantity || inward.items.reduce((acc: number, cur: any) => acc + cur.quantity, 0)).toFixed(2))} KG</div>
                                         </td>
                                         <td className="px-10 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -1193,7 +1193,9 @@ export default function InwardPage() {
                                                                 className="w-full h-8 px-2 bg-background border border-border rounded-lg text-xs appearance-none outline-none font-medium"
                                                             >
                                                                 <option value="">Dia</option>
-                                                                {diameters.map(dia => (
+                                                                <option value="Rib">Rib</option>
+                                                                <option value="13">13"</option>
+                                                                {diameters.filter(dia => dia !== 13).map(dia => (
                                                                     <option key={dia} value={dia}>{dia}"</option>
                                                                 ))}
                                                             </select>
@@ -1565,7 +1567,7 @@ export default function InwardPage() {
                                                                         <p className="font-black text-black">{item.materialId?.name || 'Fabric Variety'}</p>
                                                                         <p className="text-[10px] text-gray-400 uppercase font-black">{color}</p>
                                                                     </td>
-                                                                    <td className="px-6 py-4 text-center font-black">{item.diameter}"</td>
+                                                                    <td className="px-6 py-4 text-center font-black">{item.diameter}{item.diameter !== 'Rib' && '"'}</td>
                                                                     <td className="px-6 py-4 text-center font-bold text-gray-600">{item.pcs || 0}</td>
                                                                     <td className="px-6 py-4 text-right font-black text-black">{item.quantity} KG</td>
                                                                 </tr>
@@ -1631,7 +1633,7 @@ export default function InwardPage() {
                                                             <tbody className="divide-y divide-gray-50">
                                                                 {Object.entries(summary).sort().map(([dia, data]: [string, any]) => (
                                                                     <tr key={dia} className="font-bold">
-                                                                        <td className="px-4 py-2 text-gray-500">{dia}"</td>
+                                                                        <td className="px-4 py-2 text-gray-500">{dia}{dia !== 'Rib' && '"'}</td>
                                                                         <td className="px-4 py-2 text-center text-black">{data.pcs}</td>
                                                                         <td className="px-4 py-2 text-right text-primary">{data.qty.toFixed(2)}</td>
                                                                     </tr>

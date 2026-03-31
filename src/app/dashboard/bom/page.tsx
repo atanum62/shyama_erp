@@ -7,7 +7,7 @@ export default function BOMPage() {
     const [boms, setBoms] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
-    
+
     // Masters Data
     const [products, setProducts] = useState<{ _id: string; name: string }[]>([]);
     const [materials, setMaterials] = useState<any[]>([]);
@@ -16,14 +16,14 @@ export default function BOMPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [productName, setProductName] = useState('');
     const [unit, setUnit] = useState('Dozen');
-    const [bomMaterials, setBomMaterials] = useState<{ name: string; quantity: number|string; unit: string }[]>([]);
-    
+    const [bomMaterials, setBomMaterials] = useState<{ name: string; quantity: number | string; unit: string }[]>([]);
+
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => { 
-        fetchBoms(); 
-        fetchProducts(); 
-        fetchMaterials(); 
+    useEffect(() => {
+        fetchBoms();
+        fetchProducts();
+        fetchMaterials();
     }, []);
 
     const fetchBoms = async () => {
@@ -73,7 +73,7 @@ export default function BOMPage() {
 
     const handleSave = async () => {
         if (!productName.trim()) return alert('Product Name is required');
-        
+
         // Clean empty rows and parse numbers
         const cleanedMaterials = bomMaterials
             .filter(m => m.name.trim() !== '')
@@ -91,13 +91,13 @@ export default function BOMPage() {
             const url = editingId ? `/api/bom/${editingId}` : '/api/bom';
             const method = editingId ? 'PUT' : 'POST';
             const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            
-            if (res.ok) { 
-                setView('list'); 
-                fetchBoms(); 
-            } else { 
-                const e = await res.json(); 
-                alert(e.error || 'Save failed'); 
+
+            if (res.ok) {
+                setView('list');
+                fetchBoms();
+            } else {
+                const e = await res.json();
+                alert(e.error || 'Save failed');
             }
         } finally { setSaving(false); }
     };
@@ -114,7 +114,7 @@ export default function BOMPage() {
         setBomMaterials(prev => {
             const next = [...prev];
             next[idx] = { ...next[idx], [field]: val };
-            
+
             // Auto set unit when material is selected
             if (field === 'name') {
                 const mat = materials.find(m => m.name === val);
@@ -257,7 +257,7 @@ export default function BOMPage() {
                                             </div>
                                         </td>
                                         <td className="px-4 py-2 text-right">
-                                            <button 
+                                            <button
                                                 onClick={() => removeMaterialRow(idx)}
                                                 className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                                             >

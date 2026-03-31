@@ -808,7 +808,7 @@ export default function FabricInspectionPage() {
                                                                             <div>
                                                                                 <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.materialId?.name || 'Fabric'}</div>
                                                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                                                    <span className="text-[11px] font-black text-gray-800">{item.diameter}" DIA</span>
+                                                                                    <span className="text-[11px] font-black text-gray-800">{item.diameter}{item.diameter !== 'Rib' && '"'} DIA</span>
                                                                                     <span className="w-1 h-1 rounded-full bg-gray-300" />
                                                                                     <span className="text-[11px] font-black text-primary">{item.quantity} KG</span>
                                                                                     <span className="w-1 h-1 rounded-full bg-gray-300" />
@@ -1030,7 +1030,7 @@ export default function FabricInspectionPage() {
                                                 <div>
                                                     <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{item.materialId?.name || 'Standard Fabric'}</div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-xl font-black text-gray-900">{item.diameter}" DIAMETER</span>
+                                                        <span className="text-xl font-black text-gray-900">{item.diameter}{item.diameter !== 'Rib' && '"'} DIAMETER</span>
                                                         <div className="w-2 h-2 rounded-full bg-gray-300" />
                                                         <span className="text-xl font-black text-primary">{item.quantity} KG</span>
                                                         <div className="w-2 h-2 rounded-full bg-gray-300" />
@@ -1275,7 +1275,7 @@ export default function FabricInspectionPage() {
                                                                     <span className="text-[10px] font-bold uppercase">{item.color}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 text-center font-black text-gray-600">{item.diameter}"</td>
+                                                            <td className="px-6 py-4 text-center font-black text-gray-600">{item.diameter}{item.diameter !== 'Rib' && '"'}</td>
                                                             <td className="px-6 py-4 text-center font-bold">{item.pcs || 0} PCS</td>
                                                             <td className="px-6 py-4 text-center">
                                                                 <div className="flex flex-col items-center gap-1">
@@ -1542,7 +1542,7 @@ export default function FabricInspectionPage() {
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color.toLowerCase() }} />
                                                                     <div className="text-xs font-black text-black">
-                                                                        {item.color} - {item.diameter}" DIA ({item.pcs} PCS)
+                                                                        {item.color} - {item.diameter}{item.diameter !== 'Rib' && '"'} DIA ({item.pcs} PCS)
                                                                     </div>
                                                                 </div>
                                                             </td>

@@ -186,9 +186,10 @@ export default function CuttingPage() {
 
     useEffect(() => { fetchAll(); }, []);
 
-    const recalculateRows = (updatedRows: RowData[]) => {
+    const recalculateRows = (updatedRows: RowData[], productNameOverride?: string) => {
         let currentSlipStart = 1;
         const coeff = Number(commonWastage) || 0;
+        const productName = productNameOverride ?? form.productName;
 
         const finalRows = updatedRows.map((row, idx) => {
             const doz = Number(row.doz) || 0;
@@ -203,16 +204,17 @@ export default function CuttingPage() {
             }
 
             // Auto-calculate wastage if common coefficient is set
+            // Store wastage in the DISPLAY unit (KG or G); convert to KG only for totals
             let wastage = Number(row.wastage) || 0;
             if (coeff > 0) {
-                wastage = doz * coeff;
-                if (wastageUnit === 'g') {
-                    wastage = wastage / 1000;
-                }
+                wastage = doz * coeff; // stays in display unit (KG or G)
             }
 
+            // Convert wastage to KG for totalRowWeight calculation
+            const wastageInKg = wastageUnit === 'g' ? wastage / 1000 : wastage;
+
             const prodCons = consumptions.find(c =>
-                c.productName.trim().toLowerCase() === form.productName.trim().toLowerCase()
+                c.productName.trim().toLowerCase() === productName.trim().toLowerCase()
             );
             const variation = prodCons?.variations?.find((v: any) => v.size === row.size);
 
@@ -227,12 +229,43 @@ export default function CuttingPage() {
                     c.name.toLowerCase().includes('fol r/b') || c.name.toLowerCase().includes('fol rb')
                 );
 
-                inRB = (Number(inRBCons?.value) || 0) * doz;
-                folRB = (Number(folRBCons?.value) || 0) * doz;
+                const getVal = (c: any) => {
+                    const v = Number(c?.value) || 0;
+                    return (c?.unit?.toLowerCase() === 'g' || c?.unit === 'g') ? v / 1000 : v;
+                };
+
+                inRB = getVal(inRBCons) * doz;
+                folRB = getVal(folRBCons) * doz;
             }
 
             const weight = Number(row.weight) || 0;
-            const totalRowWeight = weight + wastage + inRB + folRB;
+            const totalRowWeight = weight + wastageInKg + inRB + folRB;
+
+            // Extra items calculation (Variance) — stored separately to not corrupt user remarks
+            let autoExtra = '';
+            const mainCons = variation?.consumption?.find((c: any) =>
+                !c.name.toLowerCase().includes('rib') &&
+                !c.name.toLowerCase().includes('rb') &&
+                !c.name.toLowerCase().includes('wstg') &&
+                !c.name.toLowerCase().includes('wastage')
+            );
+
+            if (mainCons && doz > 0 && weight > 0) {
+                const mainVal = (mainCons.unit?.toLowerCase() === 'g' || mainCons.unit === 'g') 
+                    ? Number(mainCons.value || 0) / 1000 
+                    : Number(mainCons.value || 0);
+                
+                const expectedWeight = mainVal * doz;
+                const diff = weight - expectedWeight;
+                if (diff > 0.005) {
+                    const weightPerPc = mainVal / 12;
+                    const extraPcs = weightPerPc > 0 ? Math.round(diff / weightPerPc) : 0;
+                    autoExtra = `[Extra: ${diff.toFixed(2)}KG / ~${extraPcs}Pcs]`;
+                }
+            }
+
+            // Clean any old [Extra:...] text from remarks (migration from old format)
+            const cleanRemarks = (row.remarks || '').replace(/\s*\[Extra:.*?\]/g, '').trim();
 
             return {
                 ...row,
@@ -242,11 +275,21 @@ export default function CuttingPage() {
                 wastage: Number(wastage.toFixed(3)),
                 inRB: Number(inRB.toFixed(3)),
                 folRB: Number(folRB.toFixed(3)),
-                totalRowWeight: Number(totalRowWeight.toFixed(3))
+                totalRowWeight: Number(totalRowWeight.toFixed(3)),
+                remarks: cleanRemarks,
+                autoExtra,
             };
         });
         setRows(finalRows);
     };
+
+    // Auto-recalculate when productName or consumptions data changes
+    useEffect(() => {
+        if (form.productName && consumptions.length > 0 && rows.length > 0) {
+            recalculateRows(rows);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.productName, consumptions]);
 
     const updateRow = (idx: number, field: string, val: any) => {
         const next = [...rows];
@@ -265,15 +308,12 @@ export default function CuttingPage() {
     };
 
     const applyCommonWastage = (val: string, unit: 'kg' | 'g' = wastageUnit) => {
-        // We set the state and then call recalculateRows which now uses this state
         setCommonWastage(val);
         setWastageUnit(unit);
-        // Recalculate will use the new commonWastage/Unit values
-        // Note: state updates are async, so we pass them dummy-style or use a temp rows list
+        // Wastage stored in display unit (KG or G) — no conversion here
         const coeff = Number(val) || 0;
         const next = rows.map(r => {
-            let w = Number(r.doz) * coeff;
-            if (unit === 'g') w = w / 1000;
+            const w = Number(r.doz) * coeff;
             return { ...r, wastage: Number(w.toFixed(3)) };
         });
         recalculateRows(next);
@@ -281,19 +321,21 @@ export default function CuttingPage() {
 
     const grandTotals = rows.reduce(
         (acc, row) => {
-            const rowInterlock = (Number(row.weight) || 0) + (Number(row.wastage) || 0);
+            const wastageVal = Number(row.wastage) || 0;
+            const wastageKgVal = wastageUnit === 'g' ? wastageVal / 1000 : wastageVal;
+            const rowInterlock = (Number(row.weight) || 0) + wastageKgVal;
             const rowRib = (Number(row.inRB) || 0) + (Number(row.folRB) || 0);
 
             return {
                 totalDozens: acc.totalDozens + (Number(row.doz) || 0),
                 totalPieces: acc.totalPieces + (Number(row.pcs) || 0),
                 fabricUsedKg: acc.fabricUsedKg + (Number(row.totalRowWeight) || 0),
-                wastageKg: acc.wastageKg + (Number(row.wastage) || 0),
+                wastage: acc.wastage + wastageVal,
                 interlockUsed: acc.interlockUsed + rowInterlock,
                 ribUsed: acc.ribUsed + rowRib,
             };
         },
-        { totalDozens: 0, totalPieces: 0, fabricUsedKg: 0, wastageKg: 0, interlockUsed: 0, ribUsed: 0 }
+        { totalDozens: 0, totalPieces: 0, fabricUsedKg: 0, wastage: 0, interlockUsed: 0, ribUsed: 0 }
     );
 
     const handleSubmit = async (status: 'Draft' | 'Submitted') => {
@@ -302,9 +344,14 @@ export default function CuttingPage() {
 
         setSaving(true);
         try {
+            // Merge autoExtra back into remarks for persistence
+            const mergedRows = rows.map(r => {
+                const parts = [r.remarks, r.autoExtra].filter(Boolean);
+                return { ...r, remarks: parts.join(' ').trim() };
+            });
             const payload = {
                 ...form,
-                rows,
+                rows: mergedRows,
                 status,
             };
             const url = activeSheet ? `/api/cutting-sheets?id=${activeSheet._id}` : '/api/cutting-sheets';
@@ -341,11 +388,12 @@ export default function CuttingPage() {
     };
 
     const handleView = (sheet: any) => {
+        const newProductName = sheet.productName || '';
         setForm({
             date: sheet.date?.split('T')[0] || '',
             lotNo: sheet.lotNo || '',
             challanNo: sheet.challanNo || '',
-            productName: sheet.productName || '',
+            productName: newProductName,
             gsm: sheet.gsm || '',
             totalRolls: String(sheet.totalRolls || ''),
             quality: sheet.quality || '',
@@ -357,7 +405,8 @@ export default function CuttingPage() {
             ribWeight: String(sheet.ribWeight || ''),
             ribRolls: String(sheet.ribRolls || ''),
         });
-        setRows(sheet.rows || []);
+        // Immediately recalculate with the correct productName (form state is not yet updated)
+        recalculateRows(sheet.rows || [], newProductName);
         setActiveSheet(sheet);
         setView('form');
     };
@@ -433,6 +482,7 @@ export default function CuttingPage() {
                                     <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">IN RB</th>
                                     <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">FOL RB</th>
                                     <th style="padding: 10px; border: 1px solid #dddddd; text-align: center; background: #eeeeee;">TOT WT</th>
+                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: left;">REMARKS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -448,6 +498,7 @@ export default function CuttingPage() {
                                         <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.inRB}</td>
                                         <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.folRB}</td>
                                         <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; font-weight: 900; background: #f9fafb;">${row.totalRowWeight}</td>
+                                        <td style="padding: 8px; border: 1px solid #eeeeee; font-size: 9px; color: #666;">${row.remarks || ""}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -458,6 +509,7 @@ export default function CuttingPage() {
                                     <td style="padding: 12px; border: 1px solid #dddddd; text-align: center;">${activeSheet.grandTotalPieces}</td>
                                     <td colspan="3" style="padding: 12px; border: 1px solid #dddddd;"></td>
                                     <td style="padding: 12px; border: 1px solid #dddddd; text-align: center; background: #e5e7eb;">${activeSheet.totalFabricUsedKg?.toFixed(2)} KG</td>
+                                    <td style="padding: 12px; border: 1px solid #dddddd;"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -647,7 +699,7 @@ export default function CuttingPage() {
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Interlock Totals</label>
                             <div className="flex items-center gap-2">
-                                <div className="text-sm font-black text-primary">{form.interlockWeight} KG</div>
+                                <div className="text-sm font-black text-primary">{parseFloat(Number(form.interlockWeight).toFixed(2))} KG</div>
                                 <div className="text-[10px] font-bold text-muted uppercase">/ {form.interlockRolls} Rolls</div>
                             </div>
                         </div>
@@ -655,7 +707,7 @@ export default function CuttingPage() {
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Rib Totals</label>
                             <div className="flex items-center gap-2">
-                                <div className="text-sm font-black text-orange-600">{form.ribWeight} KG</div>
+                                <div className="text-sm font-black text-orange-600">{parseFloat(Number(form.ribWeight).toFixed(2))} KG</div>
                                 <div className="text-[10px] font-bold text-muted uppercase">/ {form.ribRolls} Pcs</div>
                             </div>
                         </div>
@@ -682,7 +734,7 @@ export default function CuttingPage() {
 
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Total Weight</label>
-                            <input type="text" value={form.totalWeight + ' KG'} readOnly className="w-full bg-transparent outline-none font-black text-sm text-muted" />
+                            <input type="text" value={parseFloat(Number(form.totalWeight).toFixed(2)) + ' KG'} readOnly className="w-full bg-transparent outline-none font-black text-sm text-muted" />
                         </div>
 
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
@@ -731,10 +783,11 @@ export default function CuttingPage() {
                                     <th className="px-4 py-4 text-center">Doz</th>
                                     <th className="px-4 py-4 text-center">Pcs</th>
                                     <th className="px-4 py-4 text-center">Weight (KG)</th>
-                                    <th className="px-4 py-4 text-center">Wastage</th>
+                                    <th className="px-4 py-4 text-center">Wastage ({wastageUnit === 'g' ? 'G' : 'KG'})</th>
                                     <th className="px-4 py-4 text-center">In R/B</th>
                                     <th className="px-4 py-4 text-center">Fol R/B</th>
                                     <th className="px-4 py-4 text-center bg-primary/5 text-primary">Total WT</th>
+                                    <th className="px-4 py-4 text-center">Extra</th>
                                     <th className="px-4 py-4 text-right w-12"></th>
                                 </tr>
                             </thead>
@@ -816,6 +869,18 @@ export default function CuttingPage() {
                                                 <input type="number" value={row.totalRowWeight || ''} readOnly className="w-full h-9 px-3 bg-primary/10 border-0 rounded-lg text-[13px] font-black text-primary text-center" />
                                             </td>
 
+                                             <td className="px-2 py-3">
+                                                 <div className="flex items-center justify-center h-9">
+                                                     {row.autoExtra ? (
+                                                         <div className="text-[10px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg truncate" title={row.autoExtra}>
+                                                             {row.autoExtra}
+                                                         </div>
+                                                     ) : (
+                                                         <span className="text-[10px] text-muted/40 font-bold">—</span>
+                                                     )}
+                                                 </div>
+                                             </td>
+
                                             <td className="px-4 py-3 text-right">
                                                 <button
                                                     onClick={() => removeRow(idx)}
@@ -843,7 +908,8 @@ export default function CuttingPage() {
                                     <td className="px-2 py-4 text-center border-r border-border text-primary font-black text-lg">
                                         {grandTotals.fabricUsedKg.toFixed(2)} KG
                                     </td>
-                                    <td colSpan={1} />
+                                                                        <td className="px-2 py-4 border-r border-border" />
+<td colSpan={1} />
                                 </tr>
                             </tfoot>
                         </table>
@@ -903,7 +969,7 @@ export default function CuttingPage() {
                             <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1">Total Pieces</div>
                         </div>
                         <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center group hover:border-orange-500/50 transition-all">
-                            <div className="text-2xl font-black text-orange-500">{grandTotals.wastageKg.toFixed(2)} KG</div>
+                            <div className="text-2xl font-black text-orange-500">{grandTotals.wastage.toFixed(2)} {wastageUnit === 'g' ? 'G' : 'KG'}</div>
                             <div className="text-[9px] font-black uppercase text-muted/60 tracking-widest mt-1">Total Wastage</div>
                         </div>
                         <div className="bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center group hover:border-rose-500/50 transition-all">
