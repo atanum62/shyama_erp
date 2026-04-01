@@ -20,8 +20,26 @@ export async function POST(request: Request) {
 
         // Auto-generate sheet number if not provided
         if (!body.sheetNo) {
-            const count = await CuttingSheet.countDocuments();
-            body.sheetNo = `CS-${String(count + 1).padStart(4, '0')}-${new Date().getFullYear()}`;
+            const lastSheet = await CuttingSheet.findOne({}, { sheetNo: 1 }).sort({ createdAt: -1 });
+            let nextNum = 1;
+
+            if (lastSheet && lastSheet.sheetNo) {
+                const parts = lastSheet.sheetNo.split('-');
+                if (parts.length >= 2) {
+                    const lastNum = parseInt(parts[1], 10);
+                    if (!isNaN(lastNum)) nextNum = lastNum + 1;
+                }
+            }
+
+            body.sheetNo = `CS-${String(nextNum).padStart(4, '0')}-${new Date().getFullYear()}`;
+            
+            // Final safety check: if this auto-generated number already exists (due to manual edits), keep incrementing
+            let duplicate = await CuttingSheet.findOne({ sheetNo: body.sheetNo });
+            while (duplicate) {
+                nextNum++;
+                body.sheetNo = `CS-${String(nextNum).padStart(4, '0')}-${new Date().getFullYear()}`;
+                duplicate = await CuttingSheet.findOne({ sheetNo: body.sheetNo });
+            }
         }
 
         // Calculate row totals

@@ -434,107 +434,102 @@ export default function CuttingPage() {
             const dateStr = new Date(activeSheet.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             
             container.innerHTML = `
-                <div style="padding: 20mm; font-family: sans-serif; background: #ffffff; color: #000000; min-height: 297mm;">
-                    <!-- Report Header -->
-                    <div style="border-bottom: 2px solid #000000; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <h1 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px;">CUTTING ORDER SHEET</h1>
-                            <p style="margin: 5px 0 0 0; font-size: 12px; font-weight: 700; color: #666666;">PRODUCTION MANAGEMENT SYSTEM</p>
+                <div style="padding: 10mm; font-family: 'Times New Roman', serif; background: #ffffff; color: #000000; min-height: 297mm; border: 1px solid #000;">
+                    <!-- Company Header -->
+                    <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 10px;">
+                        <h1 style="margin: 0; font-size: 32px; font-weight: 900; text-transform: uppercase;">SHYAMA HOSIERY-2</h1>
+                        <p style="margin: 2px 0; font-size: 14px; font-weight: 700;">All type of hosiery goods job worker</p>
+                        <p style="margin: 2px 0; font-size: 11px; font-style: italic;">Ganganagar, ScoutPara, madhyamgram, 24pgs(N), kolkata-700132</p>
+                        <p style="margin: 2px 0; font-size: 12px; font-weight: 700;">Gst In: 19AVWPM7634B1Z3 , Mob.: 9231856491</p>
+                    </div>
+
+                    <!-- Top Labels -->
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 15px;">
+                        <div style="line-height: 1.6;">
+                            <div>Challan No- <span style="font-weight: 900; margin-left: 20px;">${activeSheet.challanNo || 'N/A'}</span></div>
+                            <div style="margin-top: 5px;">Interlock perker pcd</div>
+                            <div style="margin-top: 5px;">GSM: <span style="font-weight: 900; margin-left: 45px;">${activeSheet.gsm || '0.0'}</span></div>
+                            <div style="margin-top: 5px;">Lot No_ <span style="font-weight: 900; margin-left: 30px;">${activeSheet.lotNo}</span></div>
+                            <div style="margin-top: 5px;">Roll- <span style="font-weight: 900; margin-left: 45px;">${activeSheet.totalRolls || '0'}</span></div>
                         </div>
-                        <div style="text-align: right;">
-                            <p style="margin: 0; font-size: 14px; font-weight: 900;">${activeSheet.sheetNo}</p>
-                            <p style="margin: 0; font-size: 11px; font-weight: 700;">DATE: ${dateStr}</p>
-                        </div>
-                    </div>
-
-                    <!-- Master Information Table -->
-                    <div style="margin-bottom: 30px;">
-                        <h3 style="font-size: 10px; font-weight: 900; background: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin-bottom: 15px;">MASTER INFORMATION</h3>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">LOT NO</div><div style="font-weight: 900;">${activeSheet.lotNo}</div></td>
-                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">CHALLAN NO</div><div style="font-weight: 900;">${activeSheet.challanNo || 'N/A'}</div></td>
-                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">PRODUCT</div><div style="font-weight: 900; color: #2563eb;">${activeSheet.productName}</div></td>
-                                <td style="padding: 8px; border: 1px solid #eeeeee; width: 25%;"><div style="font-size: 8px; font-weight: 900; color: #999;">GSM</div><div style="font-weight: 900;">${activeSheet.gsm}</div></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">QUALITY</div><div style="font-weight: 900;">${activeSheet.quality}</div></td>
-                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">COLOR</div><div style="font-weight: 900;">${activeSheet.color}</div></td>
-                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">TOTAL ROLL</div><div style="font-weight: 900;">${activeSheet.totalRolls}</div></td>
-                                <td style="padding: 8px; border: 1px solid #eeeeee;"><div style="font-size: 8px; font-weight: 900; color: #999;">TOTAL WT</div><div style="font-weight: 900;">${activeSheet.totalWeight} KG</div></td>
-                            </tr>
-                        </table>
-                    </div>
-
-                    <!-- Main Cutting Details Table -->
-                    <div style="margin-bottom: 30px;">
-                        <h3 style="font-size: 10px; font-weight: 900; background: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin-bottom: 15px;">CUTTING DETAILS</h3>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                            <thead style="background: #fafafa;">
-                                <tr>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">SR</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: left;">SLIP NO</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">T.SLIP</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">SIZE</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">DOZ</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">PCS</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">WSTG</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">IN RB</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center;">FOL RB</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: center; background: #eeeeee;">TOT WT</th>
-                                    <th style="padding: 10px; border: 1px solid #dddddd; text-align: left;">REMARKS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${(activeSheet.rows || []).map((row: any, i: number) => `
-                                    <tr>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${i + 1}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; font-weight: 700;">${row.slipNo}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.totalSlip}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; font-weight: 900;">${row.size}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.doz}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; color: #666;">${row.pcs}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.wastage}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.inRB}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center;">${row.folRB}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; text-align: center; font-weight: 900; background: #f9fafb;">${row.totalRowWeight}</td>
-                                        <td style="padding: 8px; border: 1px solid #eeeeee; font-size: 9px; color: #666;">${row.remarks || ""}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                            <tfoot style="background: #f0f0f0;">
-                                <tr style="font-weight: 900; font-size: 13px;">
-                                    <td colspan="4" style="padding: 12px; border: 1px solid #dddddd; text-align: right;">GRAND TOTALS</td>
-                                    <td style="padding: 12px; border: 1px solid #dddddd; text-align: center;">${activeSheet.grandTotalDozens}</td>
-                                    <td style="padding: 12px; border: 1px solid #dddddd; text-align: center;">${activeSheet.grandTotalPieces}</td>
-                                    <td colspan="3" style="padding: 12px; border: 1px solid #dddddd;"></td>
-                                    <td style="padding: 12px; border: 1px solid #dddddd; text-align: center; background: #e5e7eb;">${activeSheet.totalFabricUsedKg?.toFixed(2)} KG</td>
-                                    <td style="padding: 12px; border: 1px solid #dddddd;"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-
-                    <!-- Material Reconciliation (Simplified) -->
-                    <div style="display: flex; gap: 20px;">
-                        <div style="flex: 1; border: 1px solid #eeeeee; padding: 15px; border-radius: 8px;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 10px; font-weight: 900; color: #2563eb; text-transform: uppercase;">Interlock Balance</h4>
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <span style="font-size: 20px; font-weight: 900;">${activeSheet.totalFabricUsedKg?.toFixed(2)}</span>
-                                <span style="font-size: 11px; font-weight: 700; color: #999;">Total Used (KG)</span>
+                        <div style="line-height: 1.6; text-align: right;">
+                            <div style="display: flex; justify-content: flex-end; gap: 20px;">
+                                <span>Colors-</span> <span style="font-weight: 900; min-width: 60px; text-align: left;">${activeSheet.color || 'N/A'}</span>
                             </div>
-                        </div>
-                        <div style="flex: 1; border: 1px solid #eeeeee; padding: 15px; border-radius: 8px;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 10px; font-weight: 900; color: #ea580c; text-transform: uppercase;">Wastage Control</h4>
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <span style="font-size: 20px; font-weight: 900;">${activeSheet.totalWastageKg?.toFixed(2)}</span>
-                                <span style="font-size: 11px; font-weight: 700; color: #999;">Total Loss (KG)</span>
+                            <div style="margin-top: 25px; font-size: 15px;">
+                                Dye Weight- <span style="font-weight: 900; border-bottom: 1.5px solid #000; padding: 0 5px;">${activeSheet.totalWeight || '0.00'}</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <div style="margin-top: 50px; border-top: 1px dashed #cccccc; padding-top: 20px; color: #999999; font-size: 9px; text-align: center;">
-                        This is a computer generated cutting order from Shyama ERP. System Date: ${new Date().toLocaleString()}
+
+                    <!-- Main Grid Table -->
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; border: 2.5px solid #000;">
+                        <thead>
+                            <tr style="font-weight: 900; text-align: center;">
+                                <th style="border: 1px solid #000; padding: 5px; width: 80px;" rowspan="2">Date</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 100px;" rowspan="2">Slip No.</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 40px;" rowspan="2">Total Slip</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 40px;" rowspan="2">Size</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 40px;" rowspan="2">Doz</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 50px;" rowspan="2">Pcs</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 60px;" rowspan="2">Weight</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 60px;" rowspan="2">Wastage</th>
+                                <th style="border: 1px solid #000; padding: 5px;" colspan="2">R/B</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 80px;" rowspan="2">Total Weight</th>
+                            </tr>
+                            <tr style="font-weight: 900; text-align: center;">
+                                <th style="border: 1px solid #000; padding: 5px; width: 50px;">In R/b</th>
+                                <th style="border: 1px solid #000; padding: 5px; width: 50px;">Fol R/b</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(activeSheet.rows || []).map((row: any, i: number) => `
+                                <tr style="text-align: center; height: 22px;">
+                                    <td style="border: 1px solid #000; padding: 5px;">${i === 0 ? dateStr : ''}</td>
+                                    <td style="border: 1px solid #000; padding: 5px; font-weight: 700;">${row.slipNo}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.totalSlip}</td>
+                                    <td style="border: 1px solid #000; padding: 5px; font-weight: 900;">${row.size}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.doz}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.pcs}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.weight}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.wastage || ''}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.inRB}</td>
+                                    <td style="border: 1px solid #000; padding: 5px;">${row.folRB}</td>
+                                    <td style="border: 1px solid #000; padding: 5px; font-weight: 900;">${row.totalRowWeight}</td>
+                                </tr>
+                            `).join('')}
+                            <!-- Empty rows to fill the grid -->
+                            ${Array.from({ length: Math.max(0, 15 - (activeSheet.rows?.length || 0)) }).map(() => `
+                                <tr style="height: 22px;">
+                                    ${Array.from({ length: 11 }).map(() => `<td style="border: 1px solid #000; padding: 5px;"></td>`).join('')}
+                                </tr>
+                            `).join('')}
+                            
+                            <!-- Totals Row -->
+                            <tr style="font-weight: 900; background: #eee;">
+                                <td style="border: 1px solid #000; padding: 5px;" colspan="4">Total-</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.grandTotalDozens}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.grandTotalPieces}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.rows?.reduce((s: number, r: any) => s + (Number(r.weight) || 0), 0).toFixed(2)}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.totalWastageKg?.toFixed(2)}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.rows?.reduce((s: number, r: any) => s + (Number(r.inRB) || 0), 0).toFixed(2)}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.rows?.reduce((s: number, r: any) => s + (Number(r.folRB) || 0), 0).toFixed(2)}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${activeSheet.totalFabricUsedKg?.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Footer Reconciliation -->
+                    <div style="margin-top: 10px; border: 1.5px solid #000; font-size: 12px;">
+                        <div style="display: flex; border-bottom: 1px solid #000;">
+                            <div style="flex: 1; padding: 5px; border-right: 1px solid #000; font-weight: 900; text-transform: uppercase;">Return Total (Interlock & Rib to Dying) :</div>
+                            <div style="width: 150px; padding: 5px; border-right: 1px solid #000;">Roll- <span style="font-weight: 900; margin-left: 10px;">${Number(activeSheet.interlockRolls || 0) + Number(activeSheet.ribRolls || 0)}</span></div>
+                            <div style="flex: 0.5; padding: 5px; font-weight: 900;">weight <span style="margin-left: 20px;">${(Number(activeSheet.interlockWeight || 0) + Number(activeSheet.ribWeight || 0)).toFixed(2)}</span></div>
+                        </div>
+                        <div style="padding: 10px; line-height: 1.8; font-weight: 700;">
+                            <div>Note: <span style="margin-left: 50px; display: inline-block; width: 120px;">Rib in Stock: </span> <span style="border-bottom: 1px dotted #000; min-width: 100px; display: inline-block; text-align: center;">${activeSheet.ribWeight || '0.00'} KG</span> <span style="margin-left: 40px;">Rib taken from lot no-</span> <span style="border-bottom: 1px dotted #000; min-width: 100px; display: inline-block;"></span> <span style="margin-left: 40px;">Qty: </span> <span style="border-bottom: 1px dotted #000; min-width: 60px; display: inline-block;"></span></div>
+                            <div style="margin-top: 5px;">Note: <span style="margin-left: 50px; display: inline-block; width: 120px;">InterLock in Stock: </span> <span style="border-bottom: 1px dotted #000; min-width: 100px; display: inline-block; text-align: center;">${activeSheet.interlockWeight || '0.00'} KG</span> <span style="margin-left: 40px;">Interlock taken from lot no-</span> <span style="border-bottom: 1px dotted #000; min-width: 100px; display: inline-block;"></span> <span style="margin-left: 40px;">Qty: </span> <span style="border-bottom: 1px dotted #000; min-width: 60px; display: inline-block;"></span></div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -714,7 +709,19 @@ export default function CuttingPage() {
 
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">
                             <label className="text-[10px] font-black uppercase tracking-wider text-muted/60">Product Name</label>
-                            <input type="text" value={form.productName} readOnly className="w-full bg-transparent outline-none font-black text-sm text-primary" />
+                            <select
+                                suppressHydrationWarning
+                                value={form.productName}
+                                onChange={e => setForm({ ...form, productName: e.target.value })}
+                                className="w-full bg-transparent outline-none font-black text-sm text-primary cursor-pointer appearance-none"
+                            >
+                                <option value="" className="bg-card text-foreground">-- Choose Product --</option>
+                                {consumptions.map(c => (
+                                    <option key={c._id} value={c.productName} className="bg-card text-foreground">
+                                        {c.productName}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="space-y-1.5 p-3 bg-secondary/5 rounded-xl border border-transparent hover:border-border transition-all">

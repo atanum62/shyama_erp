@@ -8,16 +8,22 @@ cloudinary.config({
 });
 
 export async function POST(request: Request) {
+    console.log("Upload request received");
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
         if (!file) {
+            console.error("No file provided in form data");
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
+        console.log(`File received: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
+
+        console.log("Buffer created, starting Cloudinary upload stream");
 
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
@@ -26,15 +32,21 @@ export async function POST(request: Request) {
                     folder: 'shyama_erp/inwards',
                 },
                 (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
+                    if (error) {
+                        console.error('Cloudinary callback error:', error);
+                        reject(error);
+                    }
+                    else {
+                        console.log('Cloudinary upload success');
+                        resolve(result);
+                    }
                 }
             ).end(buffer);
         });
 
         return NextResponse.json(result);
     } catch (error: any) {
-        console.error('Upload Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Upload Error Exception:', error);
+        return NextResponse.json({ error: error.message || 'Unknown error during upload' }, { status: 500 });
     }
 }

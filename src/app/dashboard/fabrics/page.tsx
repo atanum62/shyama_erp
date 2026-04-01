@@ -443,6 +443,9 @@ export default function InwardPage() {
                         data.append('file', file);
                         const res = await fetch('/api/upload', { method: 'POST', body: data });
                         const result = await res.json();
+                        if (!res.ok) {
+                            throw new Error(`Image upload failed: ${result.error || 'Unknown error'}`);
+                        }
                         return result.secure_url;
                     })
                 );
