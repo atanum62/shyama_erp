@@ -18,6 +18,8 @@ export default function SystemSettingsPage() {
             ifscCode: '',
             branchName: '',
         },
+        receiverEmail: '',
+        emailEnabled: true,
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -238,6 +240,117 @@ export default function SystemSettingsPage() {
                                 className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                                 placeholder="Central Branch, City"
                             />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mailing Configuration */}
+                <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border bg-secondary/10 flex items-center gap-2">
+                        <Mail className="w-5 h-5 text-primary" />
+                        <h2 className="font-bold">Mailing Configuration</h2>
+                    </div>
+                    <div className="p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Receiver's Email Address</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                                    <input
+                                        type="email"
+                                        value={(settings as any).receiverEmail || ''}
+                                        onChange={(e) => setSettings({ ...settings, receiverEmail: e.target.value } as any)}
+                                        className="w-full h-11 pl-10 pr-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                                        placeholder="Enter receiver's email..."
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-1">This email will receive automatic system alerts.</p>
+                            </div>
+                            <div className="flex flex-col justify-center gap-2">
+                                <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Automatic Email Alerts</label>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSettings({ ...settings, emailEnabled: !(settings as any).emailEnabled } as any)}
+                                        className={`w-12 h-6 rounded-full transition-all relative ${(settings as any).emailEnabled ? 'bg-primary' : 'bg-muted/30'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${(settings as any).emailEnabled ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${(settings as any).emailEnabled ? 'text-primary' : 'text-muted'}`}>
+                                        {(settings as any).emailEnabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Notification Thresholds */}
+                <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-border bg-secondary/10 flex items-center gap-2">
+                        <BadgeCheck className="w-5 h-5 text-primary" />
+                        <h2 className="font-bold">Notification Thresholds (Days)</h2>
+                    </div>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Redye Return Alert</label>
+                            <input
+                                type="number"
+                                value={(settings as any).redyeThreshold || 15}
+                                onChange={(e) => setSettings({ ...settings, redyeThreshold: parseInt(e.target.value) } as any)}
+                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all font-bold"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Alert if Redye not completed in X days.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Inward to Cutting Alert</label>
+                            <input
+                                type="number"
+                                value={(settings as any).fabricToCuttingThreshold || 10}
+                                onChange={(e) => setSettings({ ...settings, fabricToCuttingThreshold: parseInt(e.target.value) } as any)}
+                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all font-bold"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Alert if Fabric not cut in X days.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Cutting to Accessories</label>
+                            <input
+                                type="number"
+                                value={(settings as any).cuttingToAccessoryThreshold || 5}
+                                onChange={(e) => setSettings({ ...settings, cuttingToAccessoryThreshold: parseInt(e.target.value) } as any)}
+                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all font-bold"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Alert if Accessories not received in X days.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Stitching Delay Alert</label>
+                            <input
+                                type="number"
+                                value={(settings as any).stitchingDelayThreshold || 15}
+                                onChange={(e) => setSettings({ ...settings, stitchingDelayThreshold: parseInt(e.target.value) } as any)}
+                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all font-bold"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Alert if Stitching not done in X days.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Accessory to Product Apology</label>
+                            <input
+                                type="number"
+                                value={(settings as any).accessoryToProductThreshold || 20}
+                                onChange={(e) => setSettings({ ...settings, accessoryToProductThreshold: parseInt(e.target.value) } as any)}
+                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all font-bold"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Apology if ready product not sent in X days.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase text-muted/60 tracking-wider">Payment Milestone Alert</label>
+                            <input
+                                type="number"
+                                value={(settings as any).paymentThreshold || 15}
+                                onChange={(e) => setSettings({ ...settings, paymentThreshold: parseInt(e.target.value) } as any)}
+                                className="w-full h-11 px-4 bg-background border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/10 transition-all font-bold"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Alert/Apology for payment after X days.</p>
                         </div>
                     </div>
                 </div>

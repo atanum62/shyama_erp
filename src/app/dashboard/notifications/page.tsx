@@ -14,63 +14,49 @@ import {
     MailOpen,
     Mail
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function NotificationsPage() {
+    const searchParams = useSearchParams();
+    const highlightedId = searchParams.get('id');
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [notifications, setNotifications] = useState([
-        {
-            id: 1,
-            title: 'Inward Lot Approved',
-            message: 'Lot #12345 (Maroon) has been fully approved by QC after successful inspection.',
-            time: '5 mins ago',
-            date: 'March 30, 2026',
-            type: 'success',
-            unread: true,
-            category: 'Inspection'
-        },
-        {
-            id: 2,
-            title: 'Low Stock Alert',
-            message: 'Interlock 14" DIA (Yellow) is below 50KG threshold. Current stock: 42.5KG. Reordering suggested.',
-            time: '2 hours ago',
-            date: 'March 30, 2026',
-            type: 'warning',
-            unread: true,
-            category: 'Inventory'
-        },
-        {
-            id: 3,
-            title: 'Reweight Correction',
-            message: 'Weight mismatch detected in Lot #7435 (Navy). Initial: 200KG, Reweight: 198.5KG. Correction required in ledger.',
-            time: 'Yesterday',
-            date: 'March 29, 2026',
-            type: 'error',
-            unread: false,
-            category: 'Quality'
-        },
-        {
-            id: 4,
-            title: 'New Party Entry',
-            message: 'A new dyeing house "Dye-Plus Colors" has been added to the master database.',
-            time: '2 days ago',
-            date: 'March 28, 2026',
-            type: 'info',
-            unread: false,
-            category: 'Masters'
-        },
-        {
-            id: 5,
-            title: 'Monthly Report Generated',
-            message: 'The production flow analysis for February 2026 is now available in the reports section.',
-            time: '3 days ago',
-            date: 'March 27, 2026',
-            type: 'info',
-            unread: false,
-            category: 'Reports'
-        }
-    ]);
+    const [notifications, setNotifications] = useState<any[]>([]);
+
+    React.useEffect(() => {
+        fetch('/api/notifications')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    setNotifications(data.data);
+                }
+            })
+            .catch(err => console.error(err));
+    }, []);
+
+    const timeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + " years ago";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " months ago";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " days ago";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " hours ago";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " minutes ago";
+        return Math.floor(seconds) + " seconds ago";
+    };
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    };
 
     const filteredNotifications = notifications.filter(n => {
         const matchesFilter = filter === 'all' || (filter === 'unread' && n.unread);
@@ -79,8 +65,17 @@ export default function NotificationsPage() {
         return matchesFilter && matchesSearch;
     });
 
-    const markAllAsRead = () => {
-        setNotifications(notifications.map(n => ({ ...n, unread: false })));
+    const markAllAsRead = async () => {
+        try {
+            await fetch('/api/notifications', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'markAllRead' })
+            });
+            setNotifications(notifications.map(n => ({ ...n, unread: false })));
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const deleteNotification = (id: number) => {
@@ -155,7 +150,8 @@ export default function NotificationsPage() {
                         {filteredNotifications.map((n) => (
                             <div 
                                 key={n.id} 
-                                className={`p-6 hover:bg-secondary/10 transition-all cursor-pointer group relative ${n.unread ? 'bg-primary/[0.02]' : ''}`}
+                                id={`notification-${n.id}`}
+                                className={`p-6 hover:bg-secondary/10 transition-all cursor-pointer group relative ${n.unread ? 'bg-primary/[0.02]' : ''} ${highlightedId === String(n.id) ? 'ring-2 ring-primary bg-primary/5' : ''}`}
                             >
                                 {n.unread && (
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
@@ -181,13 +177,13 @@ export default function NotificationsPage() {
                                                     {n.category}
                                                 </span>
                                             </div>
-                                            <span className="text-[10px] font-bold text-muted whitespace-nowrap">{n.time}</span>
+                                            <span className="text-[10px] font-bold text-muted whitespace-nowrap">{timeAgo(n.time)}</span>
                                         </div>
                                         <p className={`text-sm leading-relaxed ${n.unread ? 'text-white/80' : 'text-muted'}`}>
                                             {n.message}
                                         </p>
                                         <div className="mt-4 flex items-center justify-between">
-                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{n.date}</span>
+                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{formatDate(n.date)}</span>
                                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button 
                                                     onClick={(e) => {
@@ -198,10 +194,13 @@ export default function NotificationsPage() {
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
-                                                <button className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary hover:translate-x-1 transition-all">
+                                                <Link 
+                                                    href={`/dashboard/notifications/${n.id}`}
+                                                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary hover:translate-x-1 transition-all"
+                                                >
                                                     Details
                                                     <ChevronRight className="w-3 h-3" />
-                                                </button>
+                                                </Link>
                                             </div>
                                         </div>
                                     </div>
@@ -214,3 +213,5 @@ export default function NotificationsPage() {
         </div>
     );
 }
+
+

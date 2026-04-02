@@ -14,6 +14,17 @@ export interface ISystemSettings extends Document {
         ifscCode: string;
         branchName: string;
     };
+    receiverEmail: string;
+    emailEnabled: boolean;
+
+    // Notification Thresholds (in days)
+    redyeThreshold: number;
+    fabricToCuttingThreshold: number;
+    cuttingToAccessoryThreshold: number;
+    stitchingDelayThreshold: number;
+    accessoryToProductThreshold: number;
+    paymentThreshold: number;
+
     updatedAt: Date;
 }
 
@@ -32,6 +43,16 @@ const SystemSettingsSchema: Schema = new Schema(
             ifscCode: { type: String, default: '' },
             branchName: { type: String, default: '' },
         },
+        receiverEmail: { type: String, default: '' },
+        emailEnabled: { type: Boolean, default: true },
+
+        // Notification Threshold Defaults
+        redyeThreshold: { type: Number, default: 15 },
+        fabricToCuttingThreshold: { type: Number, default: 10 },
+        cuttingToAccessoryThreshold: { type: Number, default: 5 },
+        stitchingDelayThreshold: { type: Number, default: 15 },
+        accessoryToProductThreshold: { type: Number, default: 20 },
+        paymentThreshold: { type: Number, default: 15 },
     },
     { timestamps: true }
 );

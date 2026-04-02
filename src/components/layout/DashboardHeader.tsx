@@ -13,33 +13,39 @@ export function DashboardHeader() {
     const lastScrollY = useRef(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Mock Notifications
-    const [notifications] = useState([
-        {
-            id: 1,
-            title: 'Inward Lot Approved',
-            message: 'Lot #12345 (Maroon) has been fully approved by QC.',
-            time: '5 mins ago',
-            type: 'success',
-            unread: true
-        },
-        {
-            id: 2,
-            title: 'Low Stock Alert',
-            message: 'Interlock 14" DIA (Yellow) is below 50KG threshold.',
-            time: '2 hours ago',
-            type: 'warning',
-            unread: true
-        },
-        {
-            id: 3,
-            title: 'Reweight Correction',
-            message: 'Weight mismatch detected in Lot #7435 (Navy). Correction required.',
-            time: 'Yesterday',
-            type: 'error',
-            unread: false
-        }
-    ]);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const res = await fetch('/api/notifications');
+                const data = await res.json();
+                if (data.success) {
+                    setNotifications(data.data.slice(0, 5)); // Show only top 5 in dropdown
+                }
+            } catch (err) {
+                console.error('Failed to fetch notifications', err);
+            }
+        };
+        fetchNotifications();
+    }, []);
+
+    const timeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + " years ago";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " months ago";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " days ago";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " hours ago";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " minutes ago";
+        return Math.floor(seconds) + " seconds ago";
+    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -123,9 +129,11 @@ export function DashboardHeader() {
                             ) : (
                                 <div className="divide-y divide-border">
                                     {notifications.map((n) => (
-                                        <div
+                                        <Link
                                             key={n.id}
-                                            className={`p-4 hover:bg-secondary/20 transition-colors cursor-pointer group ${n.unread ? 'bg-primary/[0.03]' : ''}`}
+                                            href={`/dashboard/notifications?id=${n.id}`}
+                                            onClick={() => setIsNotificationOpen(false)}
+                                            className={`p-4 hover:bg-secondary/20 transition-colors cursor-pointer group block ${n.unread ? 'bg-primary/[0.03]' : ''}`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${n.type === 'success' ? 'bg-emerald-500' :
@@ -140,11 +148,11 @@ export function DashboardHeader() {
                                                         {n.message}
                                                     </p>
                                                     <p className="text-[9px] font-bold text-primary/60 mt-2 flex items-center gap-1.5 uppercase tracking-widest">
-                                                        {n.time}
+                                                        {timeAgo(n.time)}
                                                     </p>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Link>
                                     ))}
                                 </div>
                             )}
