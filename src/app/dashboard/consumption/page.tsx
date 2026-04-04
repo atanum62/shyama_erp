@@ -350,6 +350,9 @@ export default function ConsumptionPage() {
                                             </button>
                                         </th>
                                     ))}
+                                    <th className="bg-secondary/30 px-4 py-3 text-center text-[11px] font-black uppercase tracking-wider text-primary border-b border-r border-border min-w-[120px]">
+                                        Total
+                                    </th>
                                     <th className="px-4 py-3 border-b border-border w-12"></th>
                                 </tr>
                             </thead>
@@ -378,6 +381,15 @@ export default function ConsumptionPage() {
                                                 </td>
                                             );
                                         })}
+                                        <td className="px-2 py-1.5 border-r border-border/50 text-center font-black text-primary bg-primary/5">
+                                            {(() => {
+                                                const total = components.reduce((acc, comp) => {
+                                                    const cell = v.consumption.find((c: any) => c.name === comp);
+                                                    return acc + (cell ? Number(cell.value) || 0 : 0);
+                                                }, 0);
+                                                return total > 0 ? total.toFixed(3) : '—';
+                                            })()}
+                                        </td>
                                         {/* Remove row */}
                                         <td className="px-2 text-center">
                                             <button
@@ -470,6 +482,9 @@ export default function ConsumptionPage() {
                                                     {comp}
                                                 </th>
                                             ))}
+                                            <th className="px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-widest text-primary border-b border-r border-border/50 min-w-[110px] bg-primary/5">
+                                                Total
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -491,6 +506,15 @@ export default function ConsumptionPage() {
                                                         </td>
                                                     );
                                                 })}
+                                                <td className="px-4 py-2.5 text-center border-r border-border/50 font-black text-primary bg-primary/5">
+                                                    {(() => {
+                                                        const total = item.definedComponents.reduce((acc: number, comp: string) => {
+                                                            const cell = v.consumption.find((c: any) => c.name === comp);
+                                                            return acc + (cell ? Number(cell.value) || 0 : 0);
+                                                        }, 0);
+                                                        return total > 0 ? total.toFixed(3) : '—';
+                                                    })()}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

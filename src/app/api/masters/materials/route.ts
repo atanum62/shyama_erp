@@ -13,7 +13,8 @@ export async function GET(request: Request) {
 
         return NextResponse.json(materials);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Materials GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
         const material = await Material.create(body);
         return NextResponse.json(material, { status: 201 });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Materials GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -46,7 +48,8 @@ export async function PUT(request: Request) {
 
         return NextResponse.json(material);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Materials GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -68,6 +71,7 @@ export async function DELETE(request: Request) {
 
         return NextResponse.json({ message: 'Material deleted successfully' });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Materials GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }

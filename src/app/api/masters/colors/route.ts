@@ -8,7 +8,8 @@ export async function GET() {
         const colors = await Color.find().sort({ name: 1 });
         return NextResponse.json(colors);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Colors GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -25,7 +26,8 @@ export async function POST(request: Request) {
         const color = await Color.create(body);
         return NextResponse.json(color, { status: 201 });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Colors GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -47,7 +49,8 @@ export async function PUT(request: Request) {
 
         return NextResponse.json(color);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Colors GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -69,6 +72,7 @@ export async function DELETE(request: Request) {
 
         return NextResponse.json({ message: 'Color deleted successfully' });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Colors GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }

@@ -13,7 +13,8 @@ export async function GET(request: Request) {
 
         return NextResponse.json(parties);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Parties GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
         const party = await Party.create(body);
         return NextResponse.json(party, { status: 201 });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Parties GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -46,7 +48,8 @@ export async function PUT(request: Request) {
 
         return NextResponse.json(party);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Parties GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }
 
@@ -68,6 +71,7 @@ export async function DELETE(request: Request) {
 
         return NextResponse.json({ message: 'Party deleted successfully' });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Parties GET Error:', error);
+        return NextResponse.json({ error: error.message || 'Unknown database error' }, { status: 500 });
     }
 }

@@ -75,12 +75,12 @@ export default function CuttingPage() {
     const [availableLots, setAvailableLots] = useState<any[]>([]);
     const [rows, setRows] = useState<RowData[]>([emptyRow(1)]);
     const [commonWastage, setCommonWastage] = useState('');
-    const [wastageUnit, setWastageUnit] = useState<'kg' | 'g'>('kg');
+    const [wastageUnit, setWastageUnit] = useState<'kg' | 'g' | '%'>('kg');
 
     const fetchAll = async () => {
         setLoading(true);
         try {
-            const [sheetsRes, partiesRes, colorsRes, matsRes, inwardRes, assignmentsRes, consRes] = await Promise.all([
+            const [sheetsRes, partiesRes, colorsRes, matsRes, inwardRes, assignmentsRes, consRes, clientsRes] = await Promise.all([
                 fetch('/api/cutting-sheets'),
                 fetch('/api/masters/parties?type=DyeingHouse'),
                 fetch('/api/masters/colors'),
@@ -88,13 +88,24 @@ export default function CuttingPage() {
                 fetch('/api/inward'),
                 fetch('/api/cutting/lot-assignments'),
                 fetch('/api/consumption'),
-            ]);
-            const [sheetsData, partiesData, colorsData, matsData, inwardData, assignmentsData, consData] = await Promise.all([
-                sheetsRes.json(), partiesRes.json(), colorsRes.json(), matsRes.json(), inwardRes.json(), assignmentsRes.json(), consRes.json()
+                fetch('/api/masters/parties?type=Client')
             ]);
 
-            const clientsRes = await fetch('/api/masters/parties?type=Client');
-            const clientsData = await clientsRes.json();
+            const responses = [sheetsRes, partiesRes, colorsRes, matsRes, inwardRes, assignmentsRes, consRes, clientsRes];
+            const failedReqs = responses.filter(r => !r.ok);
+            if (failedReqs.length > 0) {
+                for (let r of failedReqs) {
+                    const errPayload = await r.json().catch(() => ({error: 'Non-JSON error response'}));
+                    console.error(`API Error on ${r.url}:`, errPayload);
+                    const msg = errPayload.error || (Object.keys(errPayload).length > 0 ? JSON.stringify(errPayload) : 'Internal Server Error (No details)');
+                    const endpoint = r.url.split('?')[0].split('/').pop();
+                    alert(`Failed to load ${endpoint}: ${msg}`);
+                }
+            }
+
+            const [sheetsData, partiesData, colorsData, matsData, inwardData, assignmentsData, consData, clientsData] = await Promise.all(
+                responses.map(r => r.ok ? r.json() : [])
+            );
 
             setSheets(Array.isArray(sheetsData) ? sheetsData : []);
             setParties(Array.isArray(partiesData) ? partiesData : []);
@@ -106,7 +117,8 @@ export default function CuttingPage() {
             const processedLots = processLotGroups(inwardData, assignmentsData);
             setAvailableLots(processedLots);
         } catch (err) {
-            console.error(err);
+            console.error('Fetch exception:', err);
+            alert('A network error occurred. Check console.');
         } finally {
             setLoading(false);
         }
@@ -114,6 +126,9 @@ export default function CuttingPage() {
 
     const processLotGroups = (inwards: any[], assignments: any[] = []) => {
         const groups: Record<string, any> = {};
+
+        if (!Array.isArray(inwards)) return [];
+        if (!Array.isArray(assignments)) assignments = [];
 
         inwards.forEach(inward => {
             const lotKey = inward.lotNo || 'No Lot';
@@ -186,10 +201,13 @@ export default function CuttingPage() {
 
     useEffect(() => { fetchAll(); }, []);
 
-    const recalculateRows = (updatedRows: RowData[], productNameOverride?: string) => {
+    const recalculateRows = (updatedRows: RowData[], productNameOverride?: string, coeffOverride?: number, unitOverride?: string) => {
         let currentSlipStart = 1;
-        const coeff = Number(commonWastage) || 0;
+        const coeff = coeffOverride !== undefined ? coeffOverride : (Number(commonWastage) || 0);
+        const wUnit = unitOverride !== undefined ? unitOverride : wastageUnit;
         const productName = productNameOverride ?? form.productName;
+
+        const totalDozensForWastage = updatedRows.reduce((acc, row) => acc + (Number(row.doz) || 0), 0);
 
         const finalRows = updatedRows.map((row, idx) => {
             const doz = Number(row.doz) || 0;
@@ -204,14 +222,20 @@ export default function CuttingPage() {
             }
 
             // Auto-calculate wastage if common coefficient is set
-            // Store wastage in the DISPLAY unit (KG or G); convert to KG only for totals
+            // Store wastage in the DISPLAY unit (KG, G, or %); convert to KG only for totals
+            const weight = Number(row.weight) || 0;
+            
             let wastage = Number(row.wastage) || 0;
             if (coeff > 0) {
-                wastage = doz * coeff; // stays in display unit (KG or G)
+                if (wUnit === '%') {
+                    wastage = weight * (coeff / 100);
+                } else {
+                    wastage = coeff; // exact amount applied everywhere
+                }
             }
 
             // Convert wastage to KG for totalRowWeight calculation
-            const wastageInKg = wastageUnit === 'g' ? wastage / 1000 : wastage;
+            const wastageInKg = wUnit === 'g' ? wastage / 1000 : wastage;
 
             const prodCons = consumptions.find(c =>
                 c.productName.trim().toLowerCase() === productName.trim().toLowerCase()
@@ -220,6 +244,8 @@ export default function CuttingPage() {
 
             let inRB = 0;
             let folRB = 0;
+            const isPerPc = prodCons?.unit === 'Pcs';
+            const multiplier = isPerPc ? pcs : doz;
 
             if (variation) {
                 const inRBCons = variation.consumption.find((c: any) =>
@@ -234,11 +260,10 @@ export default function CuttingPage() {
                     return (c?.unit?.toLowerCase() === 'g' || c?.unit === 'g') ? v / 1000 : v;
                 };
 
-                inRB = getVal(inRBCons) * doz;
-                folRB = getVal(folRBCons) * doz;
+                inRB = getVal(inRBCons) * multiplier;
+                folRB = getVal(folRBCons) * multiplier;
             }
 
-            const weight = Number(row.weight) || 0;
             const totalRowWeight = weight + wastageInKg + inRB + folRB;
 
             // Extra items calculation (Variance) — stored separately to not corrupt user remarks
@@ -255,12 +280,16 @@ export default function CuttingPage() {
                     ? Number(mainCons.value || 0) / 1000 
                     : Number(mainCons.value || 0);
                 
-                const expectedWeight = mainVal * doz;
+                const expectedWeight = mainVal * multiplier;
                 const diff = weight - expectedWeight;
+                const expectedWeightPerDoz = mainVal * (isPerPc ? 12 : 1);
+                
                 if (diff > 0.005) {
-                    const weightPerPc = mainVal / 12;
-                    const extraPcs = weightPerPc > 0 ? Math.round(diff / weightPerPc) : 0;
-                    autoExtra = `[Extra: ${diff.toFixed(2)}KG / ~${extraPcs}Pcs]`;
+                    const extraDoz = expectedWeightPerDoz > 0 ? (diff / expectedWeightPerDoz).toFixed(1) : '0';
+                    autoExtra = `[Extra: ${extraDoz} Doz]`;
+                } else if (diff < -0.005) {
+                    const savedDoz = expectedWeightPerDoz > 0 ? (Math.abs(diff) / expectedWeightPerDoz).toFixed(1) : '0';
+                    autoExtra = `[Saved: ${savedDoz} Doz]`;
                 }
             }
 
@@ -307,16 +336,10 @@ export default function CuttingPage() {
         recalculateRows(next);
     };
 
-    const applyCommonWastage = (val: string, unit: 'kg' | 'g' = wastageUnit) => {
+    const applyCommonWastage = (val: string, unit: 'kg' | 'g' | '%' = wastageUnit) => {
         setCommonWastage(val);
         setWastageUnit(unit);
-        // Wastage stored in display unit (KG or G) — no conversion here
-        const coeff = Number(val) || 0;
-        const next = rows.map(r => {
-            const w = Number(r.doz) * coeff;
-            return { ...r, wastage: Number(w.toFixed(3)) };
-        });
-        recalculateRows(next);
+        recalculateRows(rows, undefined, Number(val) || 0, unit);
     };
 
     const grandTotals = rows.reduce(
@@ -558,9 +581,9 @@ export default function CuttingPage() {
 
             // 4. Optionally remove the container
             // container.remove();
-        } catch (error) {
-            console.error('PDF Generation failed:', error);
-            alert('Failed to generate PDF');
+        } catch (error: any) {
+            console.error('PDF Generation Error:', error);
+            alert(error.message || 'Failed to generate PDF');
         } finally {
             setIsDownloading(false);
         }
@@ -936,7 +959,7 @@ export default function CuttingPage() {
                                             placeholder="Value"
                                         />
                                         <div className="flex border-l border-primary/10 bg-secondary/5">
-                                            {(['kg', 'g'] as const).map((u) => (
+                                            {(['kg', 'g', '%'] as const).map((u) => (
                                                 <button
                                                     key={u}
                                                     onClick={() => {
@@ -950,7 +973,7 @@ export default function CuttingPage() {
                                             ))}
                                         </div>
                                     </div>
-                                    <span className="text-[10px] font-bold text-primary italic ml-2">Applies (Doz × Coeff) to all rows</span>
+                                    <span className="text-[10px] font-bold text-primary italic ml-2">Applies exact amount to all rows</span>
                                 </div>
                             </div>
                         </div>
